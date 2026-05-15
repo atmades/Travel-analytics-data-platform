@@ -1,0 +1,19 @@
+services:
+  mock_booking_api:
+    build:
+      context: ./services/mock_booking_api
+    container_name: travel_mock_booking_api
+    ports:
+      - "8001:8000"
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8
+    container_name: travel_clickhouse
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+
+volumes:
+  clickhouse_data:

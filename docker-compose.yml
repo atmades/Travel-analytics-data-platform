@@ -35,7 +35,19 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
-    command: standalone
+    command: >
+      bash -c "
+      airflow db migrate &&
+      airflow users create
+        --username admin
+        --password admin
+        --firstname Maxim
+        --lastname Nikitin
+        --role Admin
+        --email admin@example.com || true;
+      airflow scheduler &
+      airflow webserver
+      "
 
 volumes:
   clickhouse_data:

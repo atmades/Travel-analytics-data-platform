@@ -1,0 +1,20 @@
+metrics:
+  - name: total_bookings
+    description: Total number of bookings.
+    sql: count()
+
+  - name: paid_bookings
+    description: Number of bookings with status paid.
+    sql: countIf(status = 'paid')
+
+  - name: total_revenue
+    description: Revenue from paid bookings only.
+    sql: sumIf(price, status = 'paid')
+
+  - name: route_revenue
+    description: Revenue grouped by route and transport type.
+    source_table: mart_route_revenue
+
+  - name: booking_status_distribution
+    description: Distribution of bookings by status.
+    source_table: mart_booking_status

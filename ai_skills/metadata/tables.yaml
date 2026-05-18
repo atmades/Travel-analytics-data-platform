@@ -1,0 +1,33 @@
+tables:
+  - name: mart_daily_bookings
+    description: Daily booking metrics by booking date.
+    grain: One row per booking date.
+    columns:
+      - name: booking_date
+        description: Date of booking creation.
+      - name: total_bookings
+        description: Total number of bookings.
+      - name: paid_bookings
+        description: Number of bookings with status 'paid'.
+      - name: total_revenue
+        description: Sum of price for paid bookings.
+
+  - name: mart_route_revenue
+    description: Revenue metrics by route and transport type.
+    grain: One row per route and transport type.
+    columns:
+      - name: route
+        description: Travel route.
+      - name: transport_type
+        description: Bus, train, ferry, or flight.
+      - name: total_revenue
+        description: Revenue from paid bookings.
+
+  - name: mart_booking_status
+    description: Number of bookings by status.
+    grain: One row per booking status.
+    columns:
+      - name: status
+        description: Booking status.
+      - name: total_bookings
+        description: Number of bookings in this status.

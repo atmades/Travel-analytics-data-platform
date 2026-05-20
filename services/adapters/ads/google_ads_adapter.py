@@ -1,19 +1,20 @@
-import os
-
 from services.adapters.ads.base import BaseAdsAdapter
-
+from services.config.enums import AdsApiMode
+from services.config.settings import (
+    get_ads_settings,
+    validate_google_ads_settings,
+)
 
 class GoogleAdsAdapter(BaseAdsAdapter):
     def __init__(self):
-        self.developer_token = os.getenv("GOOGLE_ADS_DEVELOPER_TOKEN")
-        self.customer_id = os.getenv("GOOGLE_ADS_CUSTOMER_ID")
-        self.client_id = os.getenv("GOOGLE_ADS_CLIENT_ID")
-        self.client_secret = os.getenv("GOOGLE_ADS_CLIENT_SECRET")
-        self.refresh_token = os.getenv("GOOGLE_ADS_REFRESH_TOKEN")
+        self.settings = get_ads_settings()
+        
+        if self.settings.ads_api_mode == AdsApiMode.REAL:
+            validate_google_ads_settings(self.settings)
+       
 
     def fetch_campaign_performance(self) -> list[dict]:
-        print("Using Google Ads credentials from environment variables")
-
+        # TODO: Replace with real Google Ads API integration
         return [
             {
                 "platform": "google_ads",

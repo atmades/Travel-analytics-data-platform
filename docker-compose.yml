@@ -36,6 +36,16 @@ services:
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
     command: standalone
+  
+  mock_ads_api:
+    build: ./services/mock_ads_api
+    container_name: travel_mock_ads_api
+    ports:
+      - "8002:8000"
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: uvicorn services.mock_ads_api.app.main:app --host 0.0.0.0 --port 8000
 
 volumes:
   clickhouse_data:

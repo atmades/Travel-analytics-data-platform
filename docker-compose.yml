@@ -71,10 +71,13 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   user_event_producer:
-    build: ./services/user_event_producer
+    build:
+      context: .
+      dockerfile: services/user_event_producer/Dockerfile
     container_name: travel_user_event_producer
     depends_on:
       - kafka
+      - schema_registry
     restart: "no"
   
   user_event_consumer:
@@ -129,6 +132,18 @@ services:
       - kafka
       - clickhouse
     restart: unless-stopped
+  
+  schema_registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    container_name: travel_schema_registry
+    depends_on:
+      - kafka
+    ports:
+      - "8085:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
 volumes:
   clickhouse_data:

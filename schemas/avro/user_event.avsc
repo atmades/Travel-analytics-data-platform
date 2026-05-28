@@ -1,0 +1,35 @@
+{
+  "type": "record",
+  "name": "UserEvent",
+  "namespace": "travel.events",
+  "fields": [
+    {
+      "name": "event_id",
+      "type": "string"
+    },
+    {
+      "name": "user_id",
+      "type": "long"
+    },
+    {
+      "name": "event_type",
+      "type": {
+        "type": "enum",
+        "name": "UserEventType",
+        "symbols": [
+          "search_performed",
+          "booking_started",
+          "payment_completed"
+        ]
+      }
+    },
+    {
+      "name": "event_time",
+      "type": "string"
+    },
+    {
+      "name": "properties",
+      "type": "string"
+    }
+  ]
+}

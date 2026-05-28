@@ -7,7 +7,11 @@ from pydantic import ValidationError
 from contracts.user_event import UserEvent
 
 import requests
-from confluent_kafka import Consumer
+# from confluent_kafka import Consumer
+
+from confluent_kafka import DeserializingConsumer, KafkaError
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 
 
 
@@ -120,11 +124,24 @@ logging.basicConfig(
 
 
 def main():
-    consumer = Consumer(
+
+    schema_registry_client = SchemaRegistryClient(
+        {
+            "url": "http://schema-registry:8081",
+        }
+    )
+
+    avro_deserializer = AvroDeserializer(
+        schema_registry_client=schema_registry_client,
+    )
+
+    consumer = DeserializingConsumer(
         {
             "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS,
             "group.id": GROUP_ID,
             "auto.offset.reset": "earliest",
+            "enable.auto.commit": False,
+            "value.deserializer": avro_deserializer,
         }
     )
 
@@ -143,10 +160,10 @@ def main():
                 print(f"Kafka error: {message.error()}", flush=True)
                 continue
 
-            raw_value = message.value().decode("utf-8")
-
             try:
-                event_dict = json.loads(raw_value)
+                event_dict = message.value()
+                raw_value = json.dumps(event_dict, ensure_ascii=False)
+
                 validated_event = UserEvent(**event_dict)
 
                 insert_event_to_clickhouse(
@@ -157,6 +174,7 @@ def main():
                     f"Inserted event_id={validated_event.event_id} into ClickHouse",
                     flush=True,
                 )
+                consumer.commit(message)
 
             except (json.JSONDecodeError, ValidationError) as error:
                 dlq_payload = {
@@ -172,6 +190,8 @@ def main():
                     f"Invalid event sent to DLQ: {error}",
                     flush=True,
                 )
+
+                consumer.commit(message)
 
     except KeyboardInterrupt:
         print("Consumer stopped", flush=True)

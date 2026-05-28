@@ -24,12 +24,17 @@
       }
     },
     {
-      "name": "event_time",
-      "type": "string"
+    "name": "event_time",
+    "type": "string"
     },
     {
-      "name": "properties",
-      "type": "string"
+    "name": "properties",
+    "type": "string"
+    },
+    {
+    "name": "device_type",
+    "type": ["null", "string"],
+    "default": null
     }
   ]
 }

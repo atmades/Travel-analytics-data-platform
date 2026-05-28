@@ -52,6 +52,7 @@ def build_user_event() -> dict:
             },
             ensure_ascii=False,
         ),
+        "device_type": choice(["ios", "android", "web"]),
     }
 
 

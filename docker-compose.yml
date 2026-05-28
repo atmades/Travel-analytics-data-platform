@@ -129,6 +129,18 @@ services:
       - kafka
       - clickhouse
     restart: unless-stopped
+  
+  schema-registry:
+    image: confluentinc/cp-schema-registry:7.6.1
+    container_name: travel_schema_registry
+    depends_on:
+      - kafka
+    ports:
+      - "8085:8081"
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: schema-registry
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:9092
+      SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
 volumes:
   clickhouse_data:

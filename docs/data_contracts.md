@@ -170,3 +170,87 @@ Potential technologies:
 - Schema Registry;
 - OpenMetadata;
 - DataHub.
+
+
+# Schema Registry and Avro Contracts
+
+## user.events
+
+The `user.events` topic uses Avro serialization and Schema Registry.
+
+Subject:
+
+- user.events-value
+
+Current schema file:
+
+- schemas/avro/user_event.avsc
+
+
+# Schema Versions
+
+## v1
+
+Initial schema:
+
+- event_id
+- user_id
+- event_type
+- event_time
+- properties
+
+## v2
+
+Added optional field:
+
+- device_type
+
+The field is backward-compatible because it is nullable and has a default value:
+
+```json
+{
+  "name": "device_type",
+  "type": ["null", "string"],
+  "default": null
+}
+```
+
+# Compatibility Mode
+
+The global Schema Registry compatibility mode is:
+
+- BACKWARD
+
+This means new schemas must be able to read old messages.
+
+
+## Breaking Change Example
+
+Changing:
+
+```json
+{
+  "name": "user_id",
+  "type": "long"
+}
+```
+
+to:
+
+```json
+{
+  "name": "user_id",
+  "type": "string"
+}
+```
+is rejected by Schema Registry as incompatible.
+
+Error type:
+
+- TYPE_MISMATCH
+
+
+# Purpose
+
+Schema Registry protects Kafka pipelines from breaking schema changes and supports governed event evolution.
+

@@ -2,3 +2,4 @@ confluent-kafka[avro]
 requests
 pydantic
 fastavro
+prometheus_client

@@ -1,0 +1,12 @@
+{
+    "folder-color.pathColors": [
+        {
+            "folderPath": "Travel Analytics Data Platform/airflow/dags/",
+            "color": "foldercolorizer.color_00ff00"
+        },
+        {
+            "folderPath": "Travel Analytics Data Platform/airflow/",
+            "color": "foldercolorizer.color_87d7d7"
+        }
+    ]
+}

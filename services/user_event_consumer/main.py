@@ -13,15 +13,39 @@ from confluent_kafka import DeserializingConsumer, KafkaError
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 
+from prometheus_client import Counter
+from prometheus_client import start_http_server
+
 
 
 KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
-TOPIC = "user.events"
-GROUP_ID = "user-event-clickhouse-consumer-v3"
+# TOPIC = "user.events"
+TOPIC = "user.events.avro"
+GROUP_ID = "user-event-clickhouse-consumer-v4"
 
 CLICKHOUSE_URL = "http://clickhouse:8123"
 CLICKHOUSE_USER = "travel_user"
 CLICKHOUSE_PASSWORD = "travel_password"
+
+EVENTS_RECEIVED = Counter(
+    "events_received_total",
+    "Events received from Kafka"
+)
+
+EVENTS_PROCESSED = Counter(
+    "events_processed_total",
+    "Successfully processed events"
+)
+
+EVENTS_FAILED = Counter(
+    "events_failed_total",
+    "Failed events"
+)
+
+EVENTS_DLQ = Counter(
+    "events_sent_to_dlq_total",
+    "Events routed to DLQ"
+)
 
 
 def normalize_event(event: dict) -> dict:
@@ -124,10 +148,11 @@ logging.basicConfig(
 
 
 def main():
+    start_http_server(8001)
 
     schema_registry_client = SchemaRegistryClient(
         {
-            "url": "http://schema-registry:8081",
+            "url": "http://schema_registry:8081",
         }
     )
 
@@ -156,9 +181,13 @@ def main():
             if message is None:
                 continue
 
+            EVENTS_RECEIVED.inc()
+
             if message.error():
                 print(f"Kafka error: {message.error()}", flush=True)
                 continue
+
+            raw_value = ""
 
             try:
                 event_dict = message.value()
@@ -174,24 +203,39 @@ def main():
                     f"Inserted event_id={validated_event.event_id} into ClickHouse",
                     flush=True,
                 )
+
                 consumer.commit(message)
+                EVENTS_PROCESSED.inc()
 
             except (json.JSONDecodeError, ValidationError) as error:
                 dlq_payload = {
                     "raw_event": raw_value,
                     "error_type": type(error).__name__,
-                    "error_details": error.errors() if isinstance(error, ValidationError) else str(error),
+                    "error_details": (
+                        error.errors()
+                        if isinstance(error, ValidationError)
+                        else str(error)
+                    ),
                     "ingested_at": datetime.now(timezone.utc).isoformat(),
-
                 }
+
                 insert_event_to_dlq(dlq_payload)
-                
+
                 print(
                     f"Invalid event sent to DLQ: {error}",
                     flush=True,
                 )
 
                 consumer.commit(message)
+                EVENTS_DLQ.inc()
+
+            except Exception as error:
+                print(
+                    f"Unexpected processing error: {error}",
+                    flush=True,
+                )
+
+                EVENTS_FAILED.inc()
 
     except KeyboardInterrupt:
         print("Consumer stopped", flush=True)

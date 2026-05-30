@@ -10,8 +10,9 @@ from confluent_kafka.schema_registry.avro import AvroSerializer
 
 
 KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
-SCHEMA_REGISTRY_URL = "http://schema-registry:8081"
-TOPIC = "user.events"
+SCHEMA_REGISTRY_URL = "http://schema_registry:8081"
+# TOPIC = "user.events"
+TOPIC = "user.events.avro"
 SCHEMA_PATH = "/app/schemas/avro/user_event.avsc"
 
 

@@ -1,0 +1,15 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  - job_name: "user_event_consumer"
+    static_configs:
+      - targets: ["user_event_consumer:8001"]
+  
+  - job_name: "orders_cdc_consumer"
+    static_configs:
+      - targets: ["orders_cdc_consumer:8002"]

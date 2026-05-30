@@ -4,6 +4,9 @@ import logging
 import requests
 from confluent_kafka import Consumer, KafkaError
 
+from prometheus_client import Counter
+from prometheus_client import start_http_server
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -20,6 +23,22 @@ GROUP_ID = "orders-cdc-clickhouse-consumer"
 CLICKHOUSE_URL = "http://clickhouse:8123"
 CLICKHOUSE_USER = "travel_user"
 CLICKHOUSE_PASSWORD = "travel_password"
+
+
+CDC_EVENTS_RECEIVED = Counter(
+    "cdc_events_received_total",
+    "CDC events received from Kafka"
+)
+
+CDC_EVENTS_PROCESSED = Counter(
+    "cdc_events_processed_total",
+    "CDC events successfully written to ClickHouse"
+)
+
+CDC_EVENTS_FAILED = Counter(
+    "cdc_events_failed_total",
+    "CDC events failed during processing"
+)
 
 
 def extract_order_id(event: dict):
@@ -71,6 +90,8 @@ def insert_cdc_event_to_clickhouse(event: dict) -> None:
 
 
 def main():
+    start_http_server(8002)
+
     consumer = Consumer(
         {
             "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS,
@@ -96,6 +117,8 @@ def main():
                     logger.error("Kafka error: %s", msg.error())
                 continue
 
+            CDC_EVENTS_RECEIVED.inc()
+
             raw_value = msg.value().decode("utf-8")
 
             try:
@@ -110,8 +133,10 @@ def main():
                 )
 
                 consumer.commit(msg)
+                CDC_EVENTS_PROCESSED.inc()
 
             except Exception:
+                CDC_EVENTS_FAILED.inc()
                 logger.exception("Failed to process CDC message. Offset not committed.")
 
     except KeyboardInterrupt:

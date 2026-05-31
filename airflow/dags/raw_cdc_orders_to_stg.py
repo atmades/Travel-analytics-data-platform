@@ -38,6 +38,7 @@ def build_stg_orders():
         status,
         price,
         currency,
+        campaign_id,
         created_at,
         updated_at,
         source_ts_ms
@@ -50,6 +51,7 @@ def build_stg_orders():
         JSONExtractString(after_record, 'status') AS status,
         JSONExtractFloat(after_record, 'price') AS price,
         JSONExtractString(after_record, 'currency') AS currency,
+        JSONExtractUInt(after_record, 'campaign_id') AS campaign_id,
         toDateTime(JSONExtractInt(after_record, 'created_at') / 1000000) AS created_at,
         toDateTime(JSONExtractInt(after_record, 'updated_at') / 1000000) AS updated_at,
         source_ts_ms

@@ -1,6 +1,7 @@
 import json
 import time
 import uuid
+import os
 from datetime import datetime, timezone
 from random import choice, randint
 
@@ -9,11 +10,10 @@ from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroSerializer
 
 
-KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
-SCHEMA_REGISTRY_URL = "http://schema_registry:8081"
-# TOPIC = "user.events"
-TOPIC = "user.events.avro"
-SCHEMA_PATH = "/app/schemas/avro/user_event.avsc"
+KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
+SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema_registry:8081")
+TOPIC = os.getenv("USER_EVENTS_TOPIC", "user.events.avro")
+SCHEMA_PATH = os.getenv("USER_EVENT_SCHEMA_PATH", "/app/schemas/avro/user_event.avsc")
 
 
 def delivery_report(error, message):

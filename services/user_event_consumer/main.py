@@ -1,13 +1,13 @@
 import json
 import logging
 import time
+import os
 from datetime import datetime, timezone
 from pydantic import ValidationError
 
 from contracts.user_event import UserEvent
 
 import requests
-# from confluent_kafka import Consumer
 
 from confluent_kafka import DeserializingConsumer, KafkaError
 from confluent_kafka.schema_registry import SchemaRegistryClient
@@ -17,16 +17,46 @@ from prometheus_client import Counter
 from prometheus_client import start_http_server
 
 
+# KAFKA Settings
+KAFKA_BOOTSTRAP_SERVERS = os.getenv(
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "kafka:9092",
+)
 
-KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
-# TOPIC = "user.events"
-TOPIC = "user.events.avro"
-GROUP_ID = "user-event-clickhouse-consumer-v4"
+TOPIC = os.getenv(
+    "USER_EVENTS_TOPIC",
+    "user.events.avro",
+)
 
-CLICKHOUSE_URL = "http://clickhouse:8123"
-CLICKHOUSE_USER = "travel_user"
-CLICKHOUSE_PASSWORD = "travel_password"
+GROUP_ID = os.getenv(
+    "USER_EVENTS_GROUP_ID",
+    "user-event-clickhouse-consumer-observability-v4",
+)
 
+
+# CLICKHOUSE Settings
+CLICKHOUSE_URL = os.getenv(
+    "CLICKHOUSE_URL",
+    "http://clickhouse:8123",
+)
+
+CLICKHOUSE_USER = os.getenv(
+    "CLICKHOUSE_USER",
+    "travel_user",
+)
+
+CLICKHOUSE_PASSWORD = os.getenv(
+    "CLICKHOUSE_PASSWORD",
+    "travel_password",
+)
+
+# SCHEMA_REGISTRY 
+SCHEMA_REGISTRY_URL = os.getenv(
+    "SCHEMA_REGISTRY_URL",
+    "http://schema-registry:8081",
+)
+
+# PROMETHEUS counters
 EVENTS_RECEIVED = Counter(
     "events_received_total",
     "Events received from Kafka"
@@ -152,7 +182,7 @@ def main():
 
     schema_registry_client = SchemaRegistryClient(
         {
-            "url": "http://schema_registry:8081",
+            "url": SCHEMA_REGISTRY_URL,
         }
     )
 
@@ -191,6 +221,10 @@ def main():
 
             try:
                 event_dict = message.value()
+
+                if isinstance(event_dict.get("properties"), str):
+                    event_dict["properties"] = json.loads(event_dict["properties"])
+
                 raw_value = json.dumps(event_dict, ensure_ascii=False)
 
                 validated_event = UserEvent(**event_dict)

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 import requests
 from confluent_kafka import Consumer, KafkaError
@@ -16,13 +17,35 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-KAFKA_BOOTSTRAP_SERVERS = "kafka:9092"
-TOPIC = "orders.public.orders"
-GROUP_ID = "orders-cdc-clickhouse-consumer"
+KAFKA_BOOTSTRAP_SERVERS = os.getenv(
+    "KAFKA_BOOTSTRAP_SERVERS",
+    "kafka:9092",
+)
 
-CLICKHOUSE_URL = "http://clickhouse:8123"
-CLICKHOUSE_USER = "travel_user"
-CLICKHOUSE_PASSWORD = "travel_password"
+TOPIC = os.getenv(
+    "ORDERS_CDC_TOPIC",
+    "orders.public.orders",
+)
+
+GROUP_ID = os.getenv(
+    "ORDERS_CDC_GROUP_ID",
+    "orders-cdc-clickhouse-consumer",
+)
+
+CLICKHOUSE_URL = os.getenv(
+    "CLICKHOUSE_URL",
+    "http://clickhouse:8123",
+)
+
+CLICKHOUSE_USER = os.getenv(
+    "CLICKHOUSE_USER",
+    "travel_user",
+)
+
+CLICKHOUSE_PASSWORD = os.getenv(
+    "CLICKHOUSE_PASSWORD",
+    "travel_password",
+)
 
 
 CDC_EVENTS_RECEIVED = Counter(

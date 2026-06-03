@@ -33,6 +33,17 @@ GROUP_ID = os.getenv(
     "user-event-clickhouse-consumer-observability-v4",
 )
 
+# Fallback file
+DLQ_FALLBACK_FILE = os.getenv(
+    "DLQ_FALLBACK_FILE",
+    "/tmp/user_events_dlq_fallback.jsonl",
+)
+
+# Limit counts retry for infrastructure errors (Simple version)
+MAX_INFRA_RETRY_SLEEP_SECONDS = int(
+    os.getenv("MAX_INFRA_RETRY_SLEEP_SECONDS", "30")
+)
+
 
 # CLICKHOUSE Settings
 CLICKHOUSE_URL = os.getenv(
@@ -176,6 +187,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s - %(message)s",
 )
 
+
 def send_to_dlq_fallback(raw_value: str, error: Exception) -> None:
     dlq_payload = {
         "raw_event": raw_value or "{}",
@@ -186,6 +198,18 @@ def send_to_dlq_fallback(raw_value: str, error: Exception) -> None:
 
     insert_event_to_dlq(dlq_payload)
 
+
+def write_dlq_fallback_file(raw_value: str, error: Exception) -> None:
+    fallback_record = {
+        "raw_event": raw_value,
+        "error_type": type(error).__name__,
+        "error_details": str(error),
+        "failed_at": datetime.now(timezone.utc).isoformat(),
+        "source_topic": TOPIC,
+    }
+
+    with open(DLQ_FALLBACK_FILE, "a", encoding="utf-8") as file:
+        file.write(json.dumps(fallback_record, ensure_ascii=False) + "\n")
 
 def main():
     start_http_server(8001)
@@ -214,18 +238,29 @@ def main():
 
     print(f"Consumer started. Listening topic: {TOPIC}", flush=True)
 
+    infra_retry_attempt = 0
+
     try:
         while True:
-            message = consumer.poll(1.0)
+            try:
+                message = consumer.poll(1.0)
+            except Exception as error:
+                EVENTS_FAILED.inc()
+                print(f"Poll/deserialization error: {error}", flush=True)
+                continue
 
             if message is None:
                 continue
 
-            EVENTS_RECEIVED.inc()
-
             if message.error():
+                if message.error().code() == KafkaError._PARTITION_EOF:
+                    continue
+
+                EVENTS_FAILED.inc()
                 print(f"Kafka error: {message.error()}", flush=True)
                 continue
+
+            EVENTS_RECEIVED.inc()
 
             raw_value = ""
 
@@ -256,30 +291,57 @@ def main():
                     "raw_event": raw_value,
                     "error_type": type(error).__name__,
                     "error_details": (
-                        error.errors()
-                        if isinstance(error, ValidationError)
-                        else str(error)
+                    error.errors()
+                    if isinstance(error, ValidationError)
+                    else str(error)
                     ),
                     "ingested_at": datetime.now(timezone.utc).isoformat(),
                 }
 
                 insert_event_to_dlq(dlq_payload)
 
-                print(
-                    f"Invalid event sent to DLQ: {error}",
-                    flush=True,
-                )
+                print(f"Invalid event sent to DLQ: {error}", flush=True)
 
                 consumer.commit(message)
                 EVENTS_DLQ.inc()
 
-            except Exception as error:
-                print(
-                    f"Unexpected processing error: {error}",
-                    flush=True,
+            except requests.RequestException as error:
+                infra_retry_attempt += 1
+                sleep_seconds = min(
+                    2 ** infra_retry_attempt,
+                    MAX_INFRA_RETRY_SLEEP_SECONDS,
                 )
-
                 EVENTS_FAILED.inc()
+                print(
+                    f"Infrastructure error. Offset not committed. "
+                    f"Retry attempt={infra_retry_attempt}, sleep={sleep_seconds}s: {error}",
+                    flush=True,
+)
+                time.sleep(5)
+
+            except Exception as error:
+                try:
+                    send_to_dlq_fallback(raw_value, error)
+                    consumer.commit(message)
+                    EVENTS_DLQ.inc()
+
+                    print(
+                        f"Unexpected non-retryable error sent to DLQ: {error}",
+                        flush=True,
+                    )
+
+                except Exception as dlq_error:
+                    EVENTS_FAILED.inc()
+
+                    write_dlq_fallback_file(raw_value, dlq_error)
+
+                    print(
+                        f"Failed to send unexpected error to DLQ. "
+                        f"Written to fallback file. Offset not committed: {dlq_error}",
+                        flush=True,
+                    )
+
+                    time.sleep(5)
 
     except KeyboardInterrupt:
         print("Consumer stopped", flush=True)

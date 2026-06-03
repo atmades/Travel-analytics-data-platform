@@ -1,85 +1,29 @@
-import json
+import logging
 import time
-import uuid
-import os
-from datetime import datetime, timezone
-from random import choice, randint
 
-from confluent_kafka import SerializingProducer
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer
+from config import EVENTS_COUNT, EVENTS_DELAY_SECONDS, TOPIC
+from domain.event_factory import build_user_event
+from infrastructure.kafka import create_producer, delivery_report
 
 
-KAFKA_BOOTSTRAP_SERVERS = os.getenv("KAFKA_BOOTSTRAP_SERVERS", "kafka:9092")
-SCHEMA_REGISTRY_URL = os.getenv("SCHEMA_REGISTRY_URL", "http://schema_registry:8081")
-TOPIC = os.getenv("USER_EVENTS_TOPIC", "user.events.avro")
-SCHEMA_PATH = os.getenv("USER_EVENT_SCHEMA_PATH", "/app/schemas/avro/user_event.avsc")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(name)s - %(message)s",
+)
 
-
-def delivery_report(error, message):
-    if error is not None:
-        print(f"Delivery failed: {error}", flush=True)
-    else:
-        print(
-            f"Produced Avro event to {message.topic()} "
-            f"[partition={message.partition()} offset={message.offset()}]",
-            flush=True,
-        )
-
-
-def build_user_event() -> dict:
-    event_type = choice(
-        [
-            "search_performed",
-            "booking_started",
-            "payment_completed",
-        ]
-    )
-
-    return {
-        "event_id": str(uuid.uuid4()),
-        "user_id": randint(100, 999),
-        "event_type": event_type,
-        "event_time": datetime.now(timezone.utc).isoformat(),
-        "properties": json.dumps(
-            {
-                "route": choice(
-                    [
-                        "Bangkok -> Phuket",
-                        "Bangkok -> Chiang Mai",
-                        "Hanoi -> Da Nang",
-                    ]
-                )
-            },
-            ensure_ascii=False,
-        ),
-        "device_type": choice(["ios", "android", "web"]),
-    }
+logger = logging.getLogger(__name__)
 
 
 def main():
-    schema_registry_client = SchemaRegistryClient(
-        {
-            "url": SCHEMA_REGISTRY_URL,
-        }
+    producer = create_producer()
+
+    logger.info(
+        "Producing %s events to topic %s",
+        EVENTS_COUNT,
+        TOPIC,
     )
 
-    with open(SCHEMA_PATH, "r", encoding="utf-8") as schema_file:
-        schema_str = schema_file.read()
-
-    avro_serializer = AvroSerializer(
-        schema_registry_client=schema_registry_client,
-        schema_str=schema_str,
-    )
-
-    producer = SerializingProducer(
-        {
-            "bootstrap.servers": KAFKA_BOOTSTRAP_SERVERS,
-            "value.serializer": avro_serializer,
-        }
-    )
-
-    for _ in range(10):
+    for _ in range(EVENTS_COUNT):
         event = build_user_event()
 
         producer.produce(
@@ -89,9 +33,11 @@ def main():
         )
 
         producer.poll(0)
-        time.sleep(1)
+        time.sleep(EVENTS_DELAY_SECONDS)
 
     producer.flush()
+
+    logger.info("Producer finished")
 
 
 if __name__ == "__main__":

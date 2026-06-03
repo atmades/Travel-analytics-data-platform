@@ -5,7 +5,14 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY main.py .
-COPY contracts ./contracts
+COPY . .
+
+# COPY main.py .
+# COPY config.py .
+# COPY metrics.py .
+# COPY clickhouse_client.py .
+# COPY dlq.py .
+# COPY utils.py .
+# COPY contracts ./contracts
 
 CMD ["python", "main.py"]

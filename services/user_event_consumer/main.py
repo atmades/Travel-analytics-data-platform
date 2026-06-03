@@ -1,185 +1,34 @@
 import json
 import logging
 import time
-import os
 from datetime import datetime, timezone
-from pydantic import ValidationError
-
-from contracts.user_event import UserEvent
 
 import requests
+from pydantic import ValidationError
 
 from confluent_kafka import DeserializingConsumer, KafkaError
 from confluent_kafka.schema_registry import SchemaRegistryClient
 from confluent_kafka.schema_registry.avro import AvroDeserializer
 
-from prometheus_client import Counter
 from prometheus_client import start_http_server
 
 
-# KAFKA Settings
-KAFKA_BOOTSTRAP_SERVERS = os.getenv(
-    "KAFKA_BOOTSTRAP_SERVERS",
-    "kafka:9092",
+from config import (
+    GROUP_ID,
+    KAFKA_BOOTSTRAP_SERVERS,
+    MAX_INFRA_RETRY_SLEEP_SECONDS,
+    SCHEMA_REGISTRY_URL,
+    TOPIC,
 )
-
-TOPIC = os.getenv(
-    "USER_EVENTS_TOPIC",
-    "user.events.avro",
+from contracts.user_event import UserEvent
+from infrastructure.clickhouse import insert_event_to_clickhouse, insert_event_to_dlq
+from infrastructure.dlq import send_to_dlq_fallback, write_dlq_fallback_file
+from observability.metrics import (
+    EVENTS_DLQ,
+    EVENTS_FAILED,
+    EVENTS_PROCESSED,
+    EVENTS_RECEIVED,
 )
-
-GROUP_ID = os.getenv(
-    "USER_EVENTS_GROUP_ID",
-    "user-event-clickhouse-consumer-observability-v4",
-)
-
-# Fallback file
-DLQ_FALLBACK_FILE = os.getenv(
-    "DLQ_FALLBACK_FILE",
-    "/tmp/user_events_dlq_fallback.jsonl",
-)
-
-# Limit counts retry for infrastructure errors (Simple version)
-MAX_INFRA_RETRY_SLEEP_SECONDS = int(
-    os.getenv("MAX_INFRA_RETRY_SLEEP_SECONDS", "30")
-)
-
-
-# CLICKHOUSE Settings
-CLICKHOUSE_URL = os.getenv(
-    "CLICKHOUSE_URL",
-    "http://clickhouse:8123",
-)
-
-CLICKHOUSE_USER = os.getenv(
-    "CLICKHOUSE_USER",
-    "travel_user",
-)
-
-CLICKHOUSE_PASSWORD = os.getenv(
-    "CLICKHOUSE_PASSWORD",
-    "travel_password",
-)
-
-# SCHEMA_REGISTRY 
-SCHEMA_REGISTRY_URL = os.getenv(
-    "SCHEMA_REGISTRY_URL",
-    "http://schema-registry:8081",
-)
-
-# PROMETHEUS counters
-EVENTS_RECEIVED = Counter(
-    "events_received_total",
-    "Events received from Kafka"
-)
-
-EVENTS_PROCESSED = Counter(
-    "events_processed_total",
-    "Successfully processed events"
-)
-
-EVENTS_FAILED = Counter(
-    "events_failed_total",
-    "Failed events"
-)
-
-EVENTS_DLQ = Counter(
-    "events_sent_to_dlq_total",
-    "Events routed to DLQ"
-)
-
-
-def normalize_event(event: dict) -> dict:
-    raw_event_time = event["event_time"]
-
-    if isinstance(raw_event_time, str):
-        event_time = raw_event_time.split(".")[0].replace("T", " ").split("+")[0].split("Z")[0]
-    else:
-        event_time = raw_event_time.strftime("%Y-%m-%d %H:%M:%S")
-
-    return {
-        "event_id": event["event_id"],
-        "user_id": event["user_id"],
-        "event_type": event["event_type"],
-        "event_time": event_time,
-        "properties": json.dumps(event.get("properties", {}), ensure_ascii=False),
-        "source_topic": TOPIC,
-    }
-
-
-def insert_event_to_clickhouse(event: dict) -> None:
-    query = """
-    INSERT INTO travel.raw_user_events
-    (
-        event_id,
-        user_id,
-        event_type,
-        event_time,
-        properties,
-        source_topic
-    )
-    FORMAT JSONEachRow
-    """
-
-    row = json.dumps(normalize_event(event), ensure_ascii=False)
-
-    response = requests.post(
-        CLICKHOUSE_URL,
-        params={"query": query},
-        data=row.encode("utf-8"),
-        auth=(CLICKHOUSE_USER, CLICKHOUSE_PASSWORD),
-        timeout=10,
-    )
-
-    if not response.ok:
-        print(response.text)
-        raise Exception(response.text)
-
-
-def insert_event_to_dlq(payload: dict) -> None:
-    query = """
-    INSERT INTO travel.dlq_user_events
-    (
-        event_id,
-        raw_event,
-        error_reason,
-        source_topic
-    )
-    FORMAT JSONEachRow
-    """
-
-    try:
-        event_id = json.loads(payload["raw_event"]).get("event_id")
-    except Exception:
-        event_id = None
-
-    row = json.dumps(
-        {
-            "event_id": event_id,
-            "raw_event": payload["raw_event"],
-            "error_reason": json.dumps(
-                {
-                    "error_type": payload["error_type"],
-                    "error_details": payload["error_details"],
-                    "ingested_at": payload["ingested_at"],
-                },
-                ensure_ascii=False,
-            ),
-            "source_topic": TOPIC,
-        },
-        ensure_ascii=False,
-    )
-
-    response = requests.post(
-        CLICKHOUSE_URL,
-        params={"query": query},
-        data=row.encode("utf-8"),
-        auth=(CLICKHOUSE_USER, CLICKHOUSE_PASSWORD),
-        timeout=10,
-    )
-
-    if not response.ok:
-        raise Exception(response.text)
 
 
 logging.basicConfig(
@@ -187,33 +36,10 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s - %(message)s",
 )
 
-
-def send_to_dlq_fallback(raw_value: str, error: Exception) -> None:
-    dlq_payload = {
-        "raw_event": raw_value or "{}",
-        "error_type": type(error).__name__,
-        "error_details": str(error),
-        "ingested_at": datetime.now(timezone.utc).isoformat(),
-    }
-
-    insert_event_to_dlq(dlq_payload)
+logger = logging.getLogger(__name__)
 
 
-def write_dlq_fallback_file(raw_value: str, error: Exception) -> None:
-    fallback_record = {
-        "raw_event": raw_value,
-        "error_type": type(error).__name__,
-        "error_details": str(error),
-        "failed_at": datetime.now(timezone.utc).isoformat(),
-        "source_topic": TOPIC,
-    }
-
-    with open(DLQ_FALLBACK_FILE, "a", encoding="utf-8") as file:
-        file.write(json.dumps(fallback_record, ensure_ascii=False) + "\n")
-
-def main():
-    start_http_server(8001)
-
+def create_consumer() -> DeserializingConsumer:
     schema_registry_client = SchemaRegistryClient(
         {
             "url": SCHEMA_REGISTRY_URL,
@@ -236,7 +62,88 @@ def main():
 
     consumer.subscribe([TOPIC])
 
-    print(f"Consumer started. Listening topic: {TOPIC}", flush=True)
+    return consumer
+
+
+def process_message(message, consumer) -> None:
+    raw_value = ""
+
+    try:
+        event_dict = message.value()
+
+        if isinstance(event_dict.get("properties"), str):
+            event_dict["properties"] = json.loads(event_dict["properties"])
+
+        raw_value = json.dumps(event_dict, ensure_ascii=False)
+
+        validated_event = UserEvent(**event_dict)
+
+        insert_event_to_clickhouse(
+            validated_event.model_dump(mode="json")
+        )
+
+        consumer.commit(message)
+
+        EVENTS_PROCESSED.inc()
+
+        logger.info(
+            "Inserted event_id=%s into ClickHouse",
+            validated_event.event_id,
+        )
+
+    except (json.JSONDecodeError, ValidationError) as error:
+        dlq_payload = {
+            "raw_event": raw_value,
+            "error_type": type(error).__name__,
+            "error_details": (
+                error.errors()
+                if isinstance(error, ValidationError)
+                else str(error)
+            ),
+        }
+
+        insert_event_to_dlq(dlq_payload)
+
+        consumer.commit(message)
+        EVENTS_DLQ.inc()
+
+        logger.warning("Invalid event sent to DLQ: %s", error)
+
+    except requests.RequestException:
+        raise
+
+    except Exception as error:
+        try:
+            send_to_dlq_fallback(raw_value, error)
+
+            consumer.commit(message)
+            EVENTS_DLQ.inc()
+
+            logger.exception(
+                "Unexpected non-retryable error sent to DLQ: %s",
+                error,
+            )
+
+        except Exception as dlq_error:
+            EVENTS_FAILED.inc()
+
+            write_dlq_fallback_file(raw_value, dlq_error)
+
+            logger.exception(
+                "Failed to send unexpected error to DLQ. "
+                "Written to fallback file. Offset not committed: %s",
+                dlq_error,
+            )
+
+            time.sleep(5)
+
+
+def main():
+    start_http_server(8001)
+
+    consumer = create_consumer()
+
+    logger.info("Consumer started. Listening topic: %s", TOPIC)
 
     infra_retry_attempt = 0
 
@@ -246,7 +153,7 @@ def main():
                 message = consumer.poll(1.0)
             except Exception as error:
                 EVENTS_FAILED.inc()
-                print(f"Poll/deserialization error: {error}", flush=True)
+                logger.exception("Poll/deserialization error: %s", error)
                 continue
 
             if message is None:
@@ -257,98 +164,41 @@ def main():
                     continue
 
                 EVENTS_FAILED.inc()
-                print(f"Kafka error: {message.error()}", flush=True)
+                logger.error("Kafka error: %s", message.error())
                 continue
 
             EVENTS_RECEIVED.inc()
 
-            raw_value = ""
-
             try:
-                event_dict = message.value()
-
-                if isinstance(event_dict.get("properties"), str):
-                    event_dict["properties"] = json.loads(event_dict["properties"])
-
-                raw_value = json.dumps(event_dict, ensure_ascii=False)
-
-                validated_event = UserEvent(**event_dict)
-
-                insert_event_to_clickhouse(
-                    validated_event.model_dump(mode="json")
-                )
-
-                print(
-                    f"Inserted event_id={validated_event.event_id} into ClickHouse",
-                    flush=True,
-                )
-
-                consumer.commit(message)
-                EVENTS_PROCESSED.inc()
-
-            except (json.JSONDecodeError, ValidationError) as error:
-                dlq_payload = {
-                    "raw_event": raw_value,
-                    "error_type": type(error).__name__,
-                    "error_details": (
-                    error.errors()
-                    if isinstance(error, ValidationError)
-                    else str(error)
-                    ),
-                    "ingested_at": datetime.now(timezone.utc).isoformat(),
-                }
-
-                insert_event_to_dlq(dlq_payload)
-
-                print(f"Invalid event sent to DLQ: {error}", flush=True)
-
-                consumer.commit(message)
-                EVENTS_DLQ.inc()
+                process_message(message, consumer)
+                infra_retry_attempt = 0
 
             except requests.RequestException as error:
                 infra_retry_attempt += 1
+
                 sleep_seconds = min(
                     2 ** infra_retry_attempt,
                     MAX_INFRA_RETRY_SLEEP_SECONDS,
                 )
+
                 EVENTS_FAILED.inc()
-                print(
-                    f"Infrastructure error. Offset not committed. "
-                    f"Retry attempt={infra_retry_attempt}, sleep={sleep_seconds}s: {error}",
-                    flush=True,
-)
-                time.sleep(5)
 
-            except Exception as error:
-                try:
-                    send_to_dlq_fallback(raw_value, error)
-                    consumer.commit(message)
-                    EVENTS_DLQ.inc()
+                logger.exception(
+                    "Infrastructure error. Offset not committed. "
+                    "Retry attempt=%s, sleep=%ss: %s",
+                    infra_retry_attempt,
+                    sleep_seconds,
+                    error,
+                )
 
-                    print(
-                        f"Unexpected non-retryable error sent to DLQ: {error}",
-                        flush=True,
-                    )
-
-                except Exception as dlq_error:
-                    EVENTS_FAILED.inc()
-
-                    write_dlq_fallback_file(raw_value, dlq_error)
-
-                    print(
-                        f"Failed to send unexpected error to DLQ. "
-                        f"Written to fallback file. Offset not committed: {dlq_error}",
-                        flush=True,
-                    )
-
-                    time.sleep(5)
+                time.sleep(sleep_seconds)
 
     except KeyboardInterrupt:
-        print("Consumer stopped", flush=True)
+        logger.info("Consumer stopped")
 
     finally:
         consumer.close()
-        
+
 
 if __name__ == "__main__":
     main()

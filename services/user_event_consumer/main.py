@@ -176,6 +176,16 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s - %(message)s",
 )
 
+def send_to_dlq_fallback(raw_value: str, error: Exception) -> None:
+    dlq_payload = {
+        "raw_event": raw_value or "{}",
+        "error_type": type(error).__name__,
+        "error_details": str(error),
+        "ingested_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    insert_event_to_dlq(dlq_payload)
+
 
 def main():
     start_http_server(8001)

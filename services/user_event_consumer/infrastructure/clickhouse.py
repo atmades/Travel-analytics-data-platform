@@ -36,6 +36,28 @@ def insert_event_to_clickhouse(event: dict) -> None:
 
     if not response.ok:
         raise Exception(response.text)
+    
+
+def mark_dlq_event_as_recovered(event_id: str) -> None:
+    query = f"""
+    ALTER TABLE travel.dlq_user_events
+    UPDATE
+        recovered = 1,
+        recovered_at = now64(3)
+    WHERE event_id = '{event_id}'
+    """
+
+    response = requests.post(
+        CLICKHOUSE_URL,
+        params={"query": query},
+        auth=(CLICKHOUSE_USER, CLICKHOUSE_PASSWORD),
+        timeout=10,
+    )
+
+    if not response.ok:
+        raise Exception(response.text)
+
+
 
 
 def insert_event_to_dlq(payload: dict) -> None:

@@ -1,3 +1,19 @@
+"""
+Message processing workflow for a single Kafka event.
+
+Responsibilities:
+- Deserialize and validate event payload
+- Route valid events to ClickHouse
+- Route invalid events to DLQ
+- Handle unexpected errors via DLQ fallback
+- Commit Kafka offsets only after successful handling
+- Update Prometheus metrics and logs
+
+Infrastructure retries (e.g. ClickHouse outages) are handled
+in main.py to preserve at-least-once delivery semantics.
+"""
+
+
 import json
 import logging
 import time
@@ -5,9 +21,14 @@ import time
 import requests
 from pydantic import ValidationError
 
+
 from contracts.user_event import UserEvent
-from infrastructure.clickhouse import insert_event_to_clickhouse, insert_event_to_dlq
 from infrastructure.dlq import send_to_dlq_fallback, write_dlq_fallback_file
+from infrastructure.clickhouse import (
+    insert_event_to_clickhouse,
+    insert_event_to_dlq,
+    mark_dlq_event_as_recovered,
+)
 from observability.metrics import EVENTS_DLQ, EVENTS_FAILED, EVENTS_PROCESSED
 
 
@@ -30,6 +51,15 @@ def process_message(message, consumer) -> None:
         insert_event_to_clickhouse(
             validated_event.model_dump(mode="json")
         )
+
+        try:
+            mark_dlq_event_as_recovered(str(validated_event.event_id))
+        except Exception as error:
+            logger.warning(
+            "Failed to mark DLQ event as recovered for event_id=%s: %s",
+            validated_event.event_id,
+            error,
+    )
 
         consumer.commit(message)
 
@@ -59,7 +89,7 @@ def process_message(message, consumer) -> None:
         logger.warning("Invalid event sent to DLQ: %s", error)
 
     except requests.RequestException:
-        raise
+        raise # send error of any problem with requests to main
 
     except Exception as error:
         try:

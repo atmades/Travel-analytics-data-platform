@@ -9,6 +9,9 @@ from pydantic import (
 from services.adapters.exceptions import AdapterValidationError
 
 
+
+
+
 class AdMetricsRecord(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
@@ -42,7 +45,6 @@ def validate_ad_records(records: list[dict]) -> list[dict]:
             validated_records.append(
                 AdMetricsRecord(**record).model_dump()
             )
-
         except ValidationError as error:
             raise AdapterValidationError(
                 f"Ad record validation failed: {error}"

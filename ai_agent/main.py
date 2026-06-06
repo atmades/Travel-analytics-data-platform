@@ -129,8 +129,6 @@ def run_clickhouse_query(query: str) -> str:
 
 
 def main():
-    load_dotenv()
-    print("AI agent file started")
 
     question = input("Ask a travel analytics question: ")
 
@@ -142,8 +140,6 @@ def main():
     print("\nResult:")
     print(result)
 
-
-print("__name__ =", __name__)
 
 
 if __name__ == "__main__":

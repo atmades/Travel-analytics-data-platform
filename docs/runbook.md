@@ -154,11 +154,9 @@ Typical causes:
 ## API connectivity problems
 
 Exception:
-
 - ExternalApiError
 
 Typical causes:
-
 - API unavailable;
 - timeout;
 - invalid token;
@@ -205,7 +203,6 @@ Secrets should never be committed to Git.
 # Future Operational Components
 
 Planned:
-
 - Kafka monitoring;
 - MinIO health checks;
 - CDC monitoring;

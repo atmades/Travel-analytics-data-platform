@@ -2,6 +2,7 @@ import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
 from services.config.enums import AdsApiMode
+from services.adapters.exceptions import MissingCredentialsError
 
 
 load_dotenv()
@@ -42,7 +43,7 @@ def validate_meta_ads_settings(settings: AdsSettings) -> None:
     missing = [name for name, value in required.items() if not value]
 
     if missing:
-        raise ValueError(
+       raise MissingCredentialsError(
             f"Missing required Meta Ads settings: {', '.join(missing)}"
         )
 
@@ -56,6 +57,6 @@ def validate_google_ads_settings(settings: AdsSettings) -> None:
     missing = [name for name, value in required.items() if not value]
 
     if missing:
-        raise ValueError(
-            f"Missing required Google Ads settings: {', '.join(missing)}"
+        raise MissingCredentialsError(
+            f"Missing required Meta Ads settings: {', '.join(missing)}"
         )

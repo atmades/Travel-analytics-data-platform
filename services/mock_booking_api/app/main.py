@@ -15,7 +15,7 @@ def get_bookings():
             "status": "paid",
             "price": 35.50,
             "currency": "USD",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         },
         {
             "booking_id": 2,
@@ -25,6 +25,6 @@ def get_bookings():
             "status": "created",
             "price": 22.00,
             "currency": "USD",
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "created_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
         }
     ]

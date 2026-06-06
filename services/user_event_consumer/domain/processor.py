@@ -18,7 +18,6 @@ import json
 import logging
 import time
 
-import requests
 from pydantic import ValidationError
 
 

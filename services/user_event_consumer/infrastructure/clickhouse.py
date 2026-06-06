@@ -8,6 +8,7 @@ from config import (
     TOPIC,
 )
 from domain.normalizer import build_error_reason, normalize_event
+from domain.errors import InfrastructureError
 
 
 def insert_event_to_clickhouse(event: dict) -> None:
@@ -34,8 +35,10 @@ def insert_event_to_clickhouse(event: dict) -> None:
         timeout=10,
     )
 
-    if not response.ok:
-        raise Exception(response.text)
+    try:
+        response.raise_for_status()
+    except requests.RequestException as error:
+        raise InfrastructureError(response.text) from error
     
 
 def mark_dlq_event_as_recovered(event_id: str) -> None:

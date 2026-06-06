@@ -1,8 +1,6 @@
 import logging
 import time
 
-import requests
-
 from confluent_kafka import KafkaError
 from prometheus_client import start_http_server
 
@@ -12,6 +10,7 @@ from config import (
 )
 
 from domain.processor import process_message
+from domain.errors import InfrastructureError
 
 from infrastructure.kafka import create_consumer
 
@@ -19,6 +18,7 @@ from observability.metrics import (
     EVENTS_FAILED,
     EVENTS_RECEIVED,
 )
+
 
 # -----------------------
 
@@ -83,10 +83,12 @@ def main():
 
                 infra_retry_attempt = 0
 
-            except requests.RequestException as error:
+            except InfrastructureError as error:
+                # when processor sent any problem with request
                 infra_retry_attempt += 1
 
-                sleep_seconds = min(
+                # Exponential Backoff. It is trying 6 times (max 30sec)
+                sleep_seconds = min( 
                     2 ** infra_retry_attempt,
                     MAX_INFRA_RETRY_SLEEP_SECONDS,
                 )

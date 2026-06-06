@@ -30,6 +30,7 @@ from infrastructure.clickhouse import (
     mark_dlq_event_as_recovered,
 )
 from observability.metrics import EVENTS_DLQ, EVENTS_FAILED, EVENTS_PROCESSED
+from domain.errors import InfrastructureError
 
 
 logger = logging.getLogger(__name__)
@@ -88,7 +89,7 @@ def process_message(message, consumer) -> None:
 
         logger.warning("Invalid event sent to DLQ: %s", error)
 
-    except requests.RequestException:
+    except InfrastructureError:
         raise # send error of any problem with requests to main
 
     except Exception as error:

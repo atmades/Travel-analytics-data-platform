@@ -42,8 +42,9 @@ def fetch_dlq_events() -> list[dict]:
         source_topic,
         failed_at
     FROM travel.dlq_user_events
-    WHERE replayed = 0
+    WHERE recovered = 0
       AND source_topic = 'user.events.avro'
+      AND replay_count < 3
     ORDER BY failed_at
     LIMIT {BATCH_SIZE}
     FORMAT JSONEachRow

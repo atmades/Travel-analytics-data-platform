@@ -91,7 +91,7 @@ The platform combines multiple data ingestion patterns commonly used in modern d
 
 ### High-Level Architecture
 
-![Architecture](docs/architecture/High-Level Architecture.png)
+![Architecture](docs/architecture/high_level_architecture.png)
 
 [High-Level Architecture](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=82-180&t=hfLsQWvFiRvwDPy1-1)
 

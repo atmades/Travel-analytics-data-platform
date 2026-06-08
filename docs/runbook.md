@@ -32,7 +32,7 @@ docker ps
 
 
 ## Open Airflow UI
-http://localhost:8080
+http://localhost:8081
 
 
 ## Restart Airflow
@@ -105,7 +105,7 @@ LIMIT 10;
 
 ```sql
 SELECT *
-FROM travel.stg_ads
+FROM travel.mart_daily_bookings
 LIMIT 10;
 ```
 

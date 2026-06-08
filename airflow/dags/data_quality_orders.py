@@ -1,29 +1,17 @@
+import json
 from datetime import datetime
-import os
-import requests
 
+import requests
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-
-CLICKHOUSE_URL = os.getenv("CLICKHOUSE_URL", "http://clickhouse:8123")
-CLICKHOUSE_USER = os.getenv("CLICKHOUSE_USER", "travel_user")
-CLICKHOUSE_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "travel_password")
-
-
-def run_clickhouse_query(query: str) -> str:
-    response = requests.post(
-        CLICKHOUSE_URL,
-        params={"query": query},
-        auth=(CLICKHOUSE_USER, CLICKHOUSE_PASSWORD),
-        timeout=20,
-    )
-
-    if not response.ok:
-        print(response.text)
-        raise Exception(response.text)
-
-    return response.text.strip()
+from common.clickhouse_client import (
+    CLICKHOUSE_PASSWORD,
+    CLICKHOUSE_URL,
+    CLICKHOUSE_USER,
+    ClickHouseQueryError,
+    run_clickhouse_query,
+)
 
 
 def insert_dq_result(
@@ -32,7 +20,7 @@ def insert_dq_result(
     check_value: float,
     check_threshold: float,
 ) -> None:
-    query = f"""
+    query = """
     INSERT INTO travel.dq_results
     (
         check_name,
@@ -43,24 +31,26 @@ def insert_dq_result(
     FORMAT JSONEachRow
     """
 
-    row = {
-        "check_name": check_name,
-        "check_status": check_status,
-        "check_value": check_value,
-        "check_threshold": check_threshold,
-    }
+    row = json.dumps(
+        {
+            "check_name": check_name,
+            "check_status": check_status,
+            "check_value": check_value,
+            "check_threshold": check_threshold,
+        },
+        ensure_ascii=False,
+    )
 
     response = requests.post(
         CLICKHOUSE_URL,
         params={"query": query},
-        data=f"{row}\n".replace("'", '"'),
+        data=f"{row}\n".encode("utf-8"),
         auth=(CLICKHOUSE_USER, CLICKHOUSE_PASSWORD),
         timeout=20,
     )
 
     if not response.ok:
-        print(response.text)
-        raise Exception(response.text)
+        raise ClickHouseQueryError(response.text)
 
 
 def check_stg_orders_not_empty():

@@ -232,34 +232,38 @@ Exceptions:
 ---
 
 
+### User Event Streaming Flow
+
+Topic:
+
+- `user.events.avro`
+
+Architecture:
+
+User Event Producer
+    ↓
+Kafka + Schema Registry (Avro)
+    ↓
+User Event Consumer
+    ↓
+raw_user_events / dlq_user_events
+    ↓
+stg_user_events
+    ↓
+mart_user_event_funnel / mart_booking_conversion
+
+
+### CDC Ingestion Flow
+
+Components:
+
+- PostgreSQL `orders` table
+- Debezium connector (`orders.public.orders`)
+- orders CDC consumer
+- `raw_cdc_orders` → `stg_orders` → order marts
+
+
 ### Planned Future Flows
-
-## Kafka Event Streaming
-
-Planned topics:
-
-- bookings.events
-- user.events
-- ads.events
-
-Planned architecture:
-
-Producers
-    ↓
-Kafka
-    ↓
-Consumers
-    ↓
-ClickHouse
-
-## CDC Ingestion
-
-Planned:
-
-- Debezium
-- orders.cdc
-- payments.cdc
-
 
 ## MinIO Raw Archive
 

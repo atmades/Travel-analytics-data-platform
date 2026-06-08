@@ -29,3 +29,7 @@ CLICKHOUSE_PASSWORD = os.getenv(
     "CLICKHOUSE_PASSWORD",
     "travel_password",
 )
+
+MAX_INFRA_RETRY_SLEEP_SECONDS = int(
+    os.getenv("MAX_INFRA_RETRY_SLEEP_SECONDS", "30")
+)

@@ -122,48 +122,53 @@ Features:
 
 ---
 
-# Planned Versions
-
 ## v0.9.0 — Kafka Event Streaming
 
-Planned features:
+Features:
 
 - Kafka + Zookeeper;
-- user.events;
-- bookings.events;
-- ads.events;
-- producers/consumers;
+- Avro schema registry;
+- user event producer/consumer;
+- DLQ and replay workflow;
 - event ingestion into ClickHouse.
 
-Planned architecture:
+Architecture:
 
-Event Producers
-        ↓
-Kafka
-        ↓
-Consumers
-        ↓
-ClickHouse
+Event Producers → Kafka → Consumers → ClickHouse
 
 
 ## v1.0.0 — CDC Layer
 
-Planned features:
+Features:
 
-- Debezium;
-- CDC ingestion;
-- orders.cdc;
-- payments.cdc;
-- user_updates.cdc.
+- Debezium PostgreSQL connector;
+- `orders.public.orders` CDC topic;
+- CDC consumer with infrastructure retry semantics;
+- staging and order analytics marts.
 
 Goals:
 
-- real-world event sourcing patterns;
 - database change streams;
-- replayable CDC ingestion.
+- replayable CDC ingestion;
+- campaign attribution joins.
 
 
-## v1.1.0 — MinIO Lakehouse Layer
+## v1.1.0 — Platform Engineering
+
+Features:
+
+- complete schema-as-code bootstrap;
+- `make init` one-command local setup;
+- shared ClickHouse client for Airflow DAGs;
+- adapter-driven ads ingestion;
+- `platform_daily_refresh` orchestration DAG;
+- pytest unit test suite;
+- GitHub Actions quality gate.
+
+
+# Planned Versions
+
+## v1.2.0 — MinIO Lakehouse Layer
 
 Planned features:
 
@@ -183,18 +188,18 @@ Normalization
 ClickHouse
 
 
-## v1.2.0 — Observability Layer
+## v1.3.0 — Observability Layer
 
 Planned features:
 
-- Grafana;
-- Prometheus;
+- Grafana dashboards;
+- Prometheus alert rules;
 - OpenTelemetry;
-- ingestion metrics;
-- DAG monitoring.
+- consumer lag monitoring;
+- DAG SLA monitoring.
 
 
-## v1.3.0 — Metadata & Catalog Layer
+## v1.4.0 — Metadata & Catalog Layer
 
 Planned features:
 

@@ -18,6 +18,7 @@ services:
       CLICKHOUSE_DB: travel
     volumes:
       - clickhouse_data:/var/lib/clickhouse
+      - ./sql/init_clickhouse.sql:/docker-entrypoint-initdb.d/init_clickhouse.sql:ro
 
   airflow:
     image: apache/airflow:2.9.3
@@ -38,6 +39,7 @@ services:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/plugins:/opt/airflow/plugins
+      - ./:/opt/airflow/project:ro
     command: standalone
   
   mock_ads_api:
@@ -127,6 +129,8 @@ services:
       POSTGRES_DB: source_db
       POSTGRES_USER: source_user
       POSTGRES_PASSWORD: source_password
+    volumes:
+      - ./sql/init_postgres.sql:/docker-entrypoint-initdb.d/init_postgres.sql:ro
     command:
       - "postgres"
       - "-c"

@@ -90,7 +90,6 @@ The platform combines multiple data ingestion patterns commonly used in modern d
 * DLQ replay and recovery workflows
 
 
-
 ## Data Sources
 
 The platform integrates multiple types of data sources that are commonly found in modern travel and e-commerce companies.
@@ -355,6 +354,18 @@ The platform exposes operational metrics through Prometheus.
 
 These metrics provide visibility into pipeline health and processing behavior.
 
+## Engineering Practices
+
+Senior-level platform engineering patterns implemented in this repository:
+
+- **Schema-as-code** — full ClickHouse and PostgreSQL bootstrap in `sql/`
+- **One-command setup** — `make init` starts services, seeds data, registers CDC
+- **Shared platform libraries** — `airflow/dags/common/clickhouse_client.py`
+- **Adapter-driven ingestion** — ads DAG uses validated adapter layer
+- **Master orchestration** — `platform_daily_refresh` DAG chains domain pipelines
+- **Automated quality gate** — GitHub Actions runs Ruff, compile checks, and pytest
+- **Reliability semantics** — infrastructure retry/backoff in streaming consumers
+
 ## Project Structure
 
 The project follows a layered architecture approach.
@@ -367,11 +378,18 @@ services/
 ├── adapters/
 └── ...
 
+airflow/dags/
+├── common/
+└── platform_daily_refresh.py
+
 docs/
 ├── architecture/
-├── services/
 ├── decisions/
 └── incidents/
+
+tests/
+sql/
+scripts/
 ```
 
 Key design principles:
@@ -399,40 +417,50 @@ cd travel-analytics-data-platform
 ### Start Platform
 
 ```bash
-docker compose up -d
+make init
 ```
 
-### Verify Services
+This starts Docker services, applies ClickHouse schema, seeds PostgreSQL orders, registers the Debezium connector, and produces sample user events.
+
+For manual startup only:
 
 ```bash
-docker ps
+make up
+```
+
+### Run Tests and Lint Locally
+
+```bash
+pip install -r requirements-dev.txt
+make smoke
 ```
 
 ### Access Components
 
 | Component          | URL                           |
 | ------------------ | ----------------------------- |
-| Airflow            | http://localhost:8080         |
+| Airflow            | http://localhost:8081         |
 | ClickHouse         | http://localhost:8123         |
-| Prometheus Metrics | http://localhost:8010/metrics |
+| Kafka UI           | http://localhost:8088         |
+| Schema Registry    | http://localhost:8085         |
+| Prometheus         | http://localhost:9090         |
+| Grafana            | http://localhost:3000         |
+| User Event Metrics | http://localhost:8010/metrics |
+| CDC Metrics        | http://localhost:8011/metrics |
 
-### Run Example Pipelines
+### Run Pipelines
 
-Booking API ingestion:
+Trigger the master orchestration DAG in Airflow:
 
-```bash
-docker compose up booking_api
+```text
+platform_daily_refresh
 ```
 
-User event streaming:
+Or run individual pipelines:
 
 ```bash
+docker compose run --rm airflow airflow dags trigger booking_api_to_clickhouse
 docker compose up user_event_producer
-```
-
-DLQ replay:
-
-```bash
 docker compose up dlq_replayer
 ```
 
@@ -440,18 +468,12 @@ docker compose up dlq_replayer
 
 Potential next steps for the platform:
 
-* GitHub Actions CI/CD pipeline
-* Automated testing
-* Great Expectations integration
-* Grafana dashboards
+* Grafana dashboards and alert rules
 * S3/MinIO data lake layer
 * dbt transformations
 * Incremental CDC snapshots
-* Data catalog and lineage tracking
-* Lakehouse architecture patterns
+* Data catalog and lineage tracking (OpenLineage / DataHub)
 * Multi-environment deployment support
-* Replay attempt limits
-* Automated DLQ recovery workflows
-* Consumer lag monitoring
-* End-to-end integration tests
+* End-to-end integration tests with Testcontainers
+* Great Expectations integration
 

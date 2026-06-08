@@ -58,5 +58,5 @@ def validate_google_ads_settings(settings: AdsSettings) -> None:
 
     if missing:
         raise MissingCredentialsError(
-            f"Missing required Meta Ads settings: {', '.join(missing)}"
+            f"Missing required Google Ads settings: {', '.join(missing)}"
         )

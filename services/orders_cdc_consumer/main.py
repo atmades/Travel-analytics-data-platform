@@ -1,10 +1,12 @@
 import json
 import logging
+import time
 
 from confluent_kafka import KafkaError
 from prometheus_client import start_http_server
 
-from config import TOPIC
+from config import MAX_INFRA_RETRY_SLEEP_SECONDS, TOPIC
+from domain.errors import InfrastructureError
 from domain.extractor import extract_order_id
 from infrastructure.clickhouse import insert_cdc_event_to_clickhouse
 from infrastructure.kafka import create_consumer
@@ -27,6 +29,7 @@ def main():
     start_http_server(8002)
 
     consumer = create_consumer()
+    infra_retry_attempt = 0
 
     logger.info("Orders CDC consumer started. Listening topic: %s", TOPIC)
 
@@ -49,17 +52,34 @@ def main():
 
             try:
                 event = json.loads(raw_value)
-
                 insert_cdc_event_to_clickhouse(event)
 
                 consumer.commit(msg)
                 CDC_EVENTS_PROCESSED.inc()
+                infra_retry_attempt = 0
 
                 logger.info(
                     "Inserted CDC event order_id=%s op=%s",
                     extract_order_id(event),
                     event.get("op"),
                 )
+
+            except InfrastructureError as error:
+                infra_retry_attempt += 1
+                sleep_seconds = min(
+                    2 ** infra_retry_attempt,
+                    MAX_INFRA_RETRY_SLEEP_SECONDS,
+                )
+
+                CDC_EVENTS_FAILED.inc()
+                logger.exception(
+                    "Infrastructure error. Offset not committed. "
+                    "Retry attempt=%s, sleep=%ss: %s",
+                    infra_retry_attempt,
+                    sleep_seconds,
+                    error,
+                )
+                time.sleep(sleep_seconds)
 
             except Exception:
                 CDC_EVENTS_FAILED.inc()

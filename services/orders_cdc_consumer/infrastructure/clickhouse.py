@@ -7,6 +7,7 @@ from config import (
     CLICKHOUSE_URL,
     CLICKHOUSE_USER,
 )
+from domain.errors import InfrastructureError
 from domain.extractor import build_raw_cdc_row
 
 
@@ -34,5 +35,7 @@ def insert_cdc_event_to_clickhouse(event: dict) -> None:
         timeout=10,
     )
 
-    if not response.ok:
-        raise Exception(response.text)
+    try:
+        response.raise_for_status()
+    except requests.RequestException as error:
+        raise InfrastructureError(response.text) from error

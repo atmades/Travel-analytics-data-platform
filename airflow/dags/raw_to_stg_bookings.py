@@ -1,28 +1,9 @@
 from datetime import datetime
-import requests
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-
-CLICKHOUSE_URL = "http://clickhouse:8123"
-CLICKHOUSE_USER = "travel_user"
-CLICKHOUSE_PASSWORD = "travel_password"
-
-
-def run_clickhouse_query(query: str) -> str:
-    response = requests.post(
-        CLICKHOUSE_URL,
-        params={"query": query},
-        auth=(CLICKHOUSE_USER, CLICKHOUSE_PASSWORD),
-        timeout=20,
-    )
-
-    if not response.ok:
-        print(response.text)
-        raise Exception(response.text)
-
-    return response.text.strip()
+from common.clickhouse_client import run_clickhouse_query
 
 
 def load_invalid_records_to_dlq():

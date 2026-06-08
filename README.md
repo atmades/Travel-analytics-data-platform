@@ -89,28 +89,6 @@ The platform combines multiple data ingestion patterns commonly used in modern d
 * Data Quality validation
 * DLQ replay and recovery workflows
 
-### High-Level Architecture
-
-![Architecture](docs/architecture/high_level_architecture.png)
-
-[High-Level Architecture](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=82-180&t=hfLsQWvFiRvwDPy1-1)
-
-
-### Detailed Architecture Diagrams
-
-The repository contains additional diagrams describing individual platform components and processing flows:
-
-| Diagram                                                                                                                        | Description                                       |
-|--------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------|
-| [High-Level Architecture](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=82-180&t=hfLsQWvFiRvwDPy1-1)    | End-to-end platform architecture                  |
-| [User Event Producer Flow](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=160-8688&t=hfLsQWvFiRvwDPy1-1) | Kafka producer, consumer, DLQ and replay workflow |
-| [User Event Consumer — Happy Path](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=160-8689&t=hfLsQWvFiRvwDPy1-1) | From Kafka Topic to the Raw Layer in ClickHouse |
-| [User Event Consumer — Error Paths](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=160-9145&t=hfLsQWvFiRvwDPy1-1) | Infrastructure failures and event parsing errors. |
-| [CDC flow](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=211-9887&t=hfLsQWvFiRvwDPy1-1)                 | Debezium CDC ingestion pipeline                   |
-| [DLQ Replay Flow](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=187-9486&t=hfLsQWvFiRvwDPy1-1)          | DLQ replay and recovery process                   |
-| [Ads Pipeline](https://www.figma.com/design/SFv8BvrqG9V9tyKrghmNaR/Untitled?node-id=238-10158&t=hfLsQWvFiRvwDPy1-1)          | Advertising data ingestion pipeline               |
-
-These diagrams are available both as repository assets and editable Figma documents.
 
 
 ## Data Sources

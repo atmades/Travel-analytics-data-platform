@@ -21,7 +21,9 @@ services:
       - ./sql/init_clickhouse.sql:/docker-entrypoint-initdb.d/init_clickhouse.sql:ro
 
   airflow:
-    image: apache/airflow:2.9.3
+    build:
+      context: ./airflow
+    image: travel-airflow:2.9.3
     container_name: travel_airflow
     depends_on:
       - clickhouse
@@ -34,7 +36,8 @@ services:
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: sqlite:////opt/airflow/airflow.db
       CLICKHOUSE_URL: http://clickhouse:8123
       CLICKHOUSE_USER: travel_user
-      CLICKHOUSE_PASSWORD: travel_password    
+      CLICKHOUSE_PASSWORD: travel_password   
+      PYTHONPATH: /opt/airflow/project:/opt/airflow/dags 
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs

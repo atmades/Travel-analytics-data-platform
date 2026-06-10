@@ -20,17 +20,17 @@ jobs:
           python-version: "3.11"
 
       - name: Install dependencies
-        run: 
+        run: |
             python -m pip install --upgrade pip
             python -m pip install -r requirements-dev.txt
 
       - name: Run Ruff
         run: |
-          python -m ruff check services/
+          python -m ruff check services/ airflow/dags/ shared/ tests/
 
       - name: Compile Python files
         run: |
-          python -m compileall services/
+          python -m compileall services/ airflow/dags/ shared/
 
       - name: Run unit tests
         run: |

@@ -6,7 +6,7 @@ sys.path.insert(0, str(SERVICE_PATH))
 
 sys.modules.pop("domain", None)
 
-from domain.normalizer import parse_event_time
+from domain.normalizer import parse_event_time  # noqa: E402
 
 
 def test_parse_event_time_converts_zulu_time_to_clickhouse_format():

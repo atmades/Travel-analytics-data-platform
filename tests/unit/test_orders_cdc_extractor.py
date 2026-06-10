@@ -5,7 +5,7 @@ sys.modules.pop("domain", None)
 SERVICE_PATH = Path(__file__).resolve().parents[2] / "services" / "orders_cdc_consumer"
 sys.path.insert(0, str(SERVICE_PATH))
 
-from domain.extractor import build_raw_cdc_row, extract_order_id
+from domain.extractor import build_raw_cdc_row, extract_order_id  # noqa: E402
 
 
 def test_extract_order_id_from_after_record():

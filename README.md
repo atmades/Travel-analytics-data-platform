@@ -105,9 +105,15 @@ The platform combines multiple data ingestion patterns commonly used in modern d
 
 ### Prerequisites
 
-* Docker
-* Docker Compose
-* Git
+- Docker
+- Docker Compose
+- Python 3.11+
+
+### Developer Dependencies
+
+```bash
+pip install -r requirements-dev.txt
+```
 
 ### Clone Repository
 
@@ -119,7 +125,7 @@ cd travel-analytics-data-platform
 ### Initialize Platform
 
 ```bash
-make init
+make init 
 ```
 
 This command:
@@ -246,6 +252,7 @@ Data Marts
 ### Raw Layer
 
 The Raw layer stores data as close as possible to the source systems.
+Raw layer is append-only and stores all ingestion runs.
 
 Objectives:
 
@@ -273,6 +280,7 @@ Characteristics:
 ### Staging Layer
 
 The Staging layer standardizes and prepares data for analytical consumption.
+Staging layer deduplicates bookings using argMax(..., loaded_at) and keeps the latest version per booking_id.
 
 Objectives:
 

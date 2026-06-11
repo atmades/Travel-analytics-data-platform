@@ -3,7 +3,7 @@ from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def load_invalid_records_to_dlq():
@@ -22,7 +22,8 @@ def load_invalid_records_to_dlq():
                 'price', toString(price),
                 'currency', currency,
                 'created_at', toString(created_at),
-                'loaded_at', toString(loaded_at)
+                'loaded_at', toString(loaded_at),
+                'run_id', run_id
             )
         ) AS raw_record,
         multiIf(
@@ -64,24 +65,28 @@ def load_valid_records_to_staging():
         price,
         currency,
         created_at,
-        loaded_at
+        latest_loaded_at AS loaded_at
     FROM
     (
         SELECT
-            *,
-            row_number() OVER (
-                PARTITION BY booking_id
-                ORDER BY loaded_at DESC
-            ) AS rn
+            booking_id,
+            argMax(user_id, loaded_at) AS user_id,
+            argMax(route, loaded_at) AS route,
+            argMax(transport_type, loaded_at) AS transport_type,
+            argMax(status, loaded_at) AS status,
+            argMax(price, loaded_at) AS price,
+            argMax(currency, loaded_at) AS currency,
+            argMax(created_at, loaded_at) AS created_at,
+            max(loaded_at) AS latest_loaded_at
         FROM travel.raw_bookings
-        WHERE booking_id != 0
-          AND price >= 0
+        GROUP BY booking_id
     )
-    WHERE rn = 1
+    WHERE booking_id != 0
+      AND price >= 0
     """
 
     run_clickhouse_query(query)
-    print("Valid records loaded to stg_bookings")
+    print("Latest valid records loaded to stg_bookings")
 
 
 with DAG(

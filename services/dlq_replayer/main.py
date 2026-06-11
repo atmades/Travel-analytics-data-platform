@@ -1,6 +1,5 @@
 import json
 import os
-from datetime import datetime, timezone
 
 import requests
 from confluent_kafka import SerializingProducer
@@ -80,22 +79,36 @@ def mark_as_replayed(event_ids: list[str]) -> None:
     ALTER TABLE travel.dlq_user_events
     UPDATE
         replayed = 1,
-        replayed_at = parseDateTime64BestEffort('{datetime.now(timezone.utc).isoformat()}', 3)
+        replayed_at = now64(3),
+        replay_count = replay_count + 1,
+        last_replay_at = now64(3)
     WHERE event_id IN ({ids})
     """
 
     run_clickhouse_query(query)
 
 
-def delivery_report(error, message):
-    if error is not None:
-        print(f"Replay delivery failed: {error}", flush=True)
-    else:
+def make_delivery_report(
+    event_id: str,
+    successfully_replayed_event_ids: list[str],
+):
+    def delivery_report(error, message):
+        if error is not None:
+            print(
+                f"Replay delivery failed for event_id={event_id}: {error}",
+                flush=True,
+            )
+            return
+
+        successfully_replayed_event_ids.append(event_id)
+
         print(
-            f"Replayed event to {message.topic()} "
+            f"Replayed event_id={event_id} to {message.topic()} "
             f"[partition={message.partition()} offset={message.offset()}]",
             flush=True,
         )
+
+    return delivery_report
 
 
 def main():
@@ -122,7 +135,7 @@ def main():
         print("No DLQ events to replay", flush=True)
         return
 
-    replayed_event_ids = []
+    successfully_replayed_event_ids: list[str] = []
 
     for row in dlq_events:
         event_id = row["event_id"]
@@ -133,20 +146,26 @@ def main():
             producer.produce(
                 USER_EVENTS_TOPIC,
                 value=event,
-                on_delivery=delivery_report,
+                on_delivery=make_delivery_report(
+                    event_id=event_id,
+                    successfully_replayed_event_ids=successfully_replayed_event_ids,
+                ),
             )
 
             producer.poll(0)
-            replayed_event_ids.append(event_id)
 
         except Exception as error:
             print(f"Failed to replay event_id={event_id}: {error}", flush=True)
 
     producer.flush()
 
-    mark_as_replayed(replayed_event_ids)
+    mark_as_replayed(successfully_replayed_event_ids)
 
-    print(f"Replayed {len(replayed_event_ids)} DLQ events", flush=True)
+    print(
+        f"Successfully replayed {len(successfully_replayed_event_ids)} "
+        f"of {len(dlq_events)} DLQ events",
+        flush=True,
+    )
 
 
 if __name__ == "__main__":

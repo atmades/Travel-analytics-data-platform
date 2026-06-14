@@ -1,9 +1,41 @@
+"""
+Build Data Quality monitoring mart.
+
+Purpose:
+- Aggregate the latest result of each Data Quality check.
+- Provide a single source of truth for DQ dashboards.
+- Simplify monitoring in Grafana and operational reviews.
+
+Input:
+- travel.dq_results
+
+Output:
+- travel.mart_dq_latest_results
+
+Business Rules:
+- Each DQ check may run many times over time.
+- Only the most recent result for each check_name is kept in the mart.
+- Historical DQ executions remain available in dq_results.
+
+Examples:
+- stg_orders_not_empty
+- stg_orders_valid_status
+- stg_bookings_freshness
+- raw_bookings_completeness
+
+Notes:
+- dq_results is the historical audit table.
+- mart_dq_latest_results is the operational monitoring table.
+- Dashboards should query the mart instead of scanning the full history table.
+"""
+
+
 from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_mart_dq_latest_results():

@@ -1,16 +1,36 @@
+"""
+Build Advertising staging layer.
+
+Purpose:
+- Consolidate advertising data from multiple ad platforms.
+- Store latest campaign state using a ClickHouse ReplacingMergeTree table.
+- Create a unified dataset for downstream advertising marts.
+
+Input:
+- travel.raw_google_ads
+- travel.raw_meta_ads
+
+Output:
+- travel.stg_ads_latest
+
+Business Rules:
+- Raw advertising tables are append-only ingestion history.
+- Staging stores latest campaign versions.
+- Deduplication key is (platform, campaign_id).
+- loaded_at is used as the version column.
+"""
+
 from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def load_raw_ads_to_staging():
-    run_clickhouse_query("TRUNCATE TABLE travel.stg_ads")
-
     query = """
-    INSERT INTO travel.stg_ads
+    INSERT INTO travel.stg_ads_latest
     (
         platform,
         campaign_id,
@@ -30,24 +50,21 @@ def load_raw_ads_to_staging():
         loaded_at
     FROM
     (
-        SELECT
-            *,
-            row_number() OVER (
-                PARTITION BY platform, campaign_id
-                ORDER BY loaded_at DESC
-            ) AS rn
-        FROM
-        (
-            SELECT * FROM travel.raw_google_ads
-            UNION ALL
-            SELECT * FROM travel.raw_meta_ads
-        )
+        SELECT * FROM travel.raw_google_ads
+        UNION ALL
+        SELECT * FROM travel.raw_meta_ads
     )
-    WHERE rn = 1
+    WHERE loaded_at > (
+        SELECT ifNull(
+            max(loaded_at),
+            toDateTime64('1970-01-01 00:00:00', 3, 'UTC')
+        )
+        FROM travel.stg_ads_latest FINAL
+    )
     """
 
     run_clickhouse_query(query)
-    print("stg_ads built successfully")
+    print("New advertising records loaded to stg_ads_latest")
 
 
 with DAG(

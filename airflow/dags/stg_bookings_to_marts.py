@@ -26,7 +26,7 @@ def build_mart_daily_bookings():
         countIf(status = 'created') AS created_bookings,
         countIf(status = 'cancelled') AS cancelled_bookings,
         sumIf(price, status = 'paid') AS total_revenue
-    FROM travel.stg_bookings
+    FROM travel.stg_bookings_latest FINAL
     GROUP BY booking_date
     """
 
@@ -74,7 +74,7 @@ def build_mart_booking_status():
     SELECT
         status,
         count() AS total_bookings
-    FROM travel.stg_bookings
+    FROM travel.stg_bookings_latest FINAL
     GROUP BY status
     """
 

@@ -1,17 +1,46 @@
+
+"""
+Data Quality checks for the Orders staging layer.
+
+Purpose:
+- Validate that CDC-derived orders were successfully transformed into staging.
+- Detect duplicate order_id values before downstream analytics.
+- Validate core business rules for revenue-related orders.
+- Store every DQ result in travel.dq_results for observability and audit.
+
+Input:
+- travel.stg_orders
+
+Output:
+- travel.dq_results
+
+Checks:
+1. Completeness
+   Ensures that stg_orders contains records.
+
+2. Uniqueness
+   Ensures that each order_id appears only once in the staging layer.
+
+3. Positive price
+   Ensures paid/completed orders have positive revenue values.
+
+4. Valid status
+   Ensures order status values belong to the expected business domain.
+
+Notes:
+- This DAG validates the staging layer, not the raw CDC layer.
+- Failed checks stop downstream processing.
+- DQ results are persisted for monitoring and historical analysis.
+"""
+
+
 import json
 from datetime import datetime
 
-import requests
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import (
-    CLICKHOUSE_PASSWORD,
-    CLICKHOUSE_URL,
-    CLICKHOUSE_USER,
-    ClickHouseQueryError,
-    run_clickhouse_query,
-)
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def insert_dq_result(
@@ -41,17 +70,10 @@ def insert_dq_result(
         ensure_ascii=False,
     )
 
-    response = requests.post(
-        CLICKHOUSE_URL,
-        params={"query": query},
+    run_clickhouse_query(
+        query,
         data=f"{row}\n".encode("utf-8"),
-        auth=(CLICKHOUSE_USER, CLICKHOUSE_PASSWORD),
-        timeout=20,
     )
-
-    if not response.ok:
-        raise ClickHouseQueryError(response.text)
-
 
 def check_stg_orders_not_empty():
     value = float(run_clickhouse_query("SELECT count() FROM travel.stg_orders"))

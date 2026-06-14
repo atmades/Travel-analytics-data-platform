@@ -1,3 +1,36 @@
+
+"""
+Booking API ingestion pipeline.
+
+Purpose:
+- Extract booking data from the operational booking system.
+- Store booking records in the Raw layer using an append-only pattern.
+- Add ingestion metadata for lineage, audit, replay, and recovery workflows.
+
+Input:
+- Booking API (mock source)
+
+Output:
+- travel.raw_bookings
+
+Business Rules:
+- Raw layer is append-only.
+- Existing records are never updated or deleted.
+- Each ingestion run receives a unique run_id.
+- loaded_at represents ingestion time, not business event time.
+- Multiple versions of the same booking_id are expected and allowed.
+
+Metadata:
+- run_id identifies a specific ingestion execution.
+- loaded_at is used for freshness checks and latest-state reconstruction.
+
+Notes:
+- Data validation is performed in downstream Data Quality DAGs.
+- Deduplication is performed in the Staging layer.
+- Latest booking state is reconstructed later using loaded_at.
+"""
+
+
 import json
 from datetime import datetime, timezone
 from uuid import uuid4
@@ -74,6 +107,12 @@ def load_bookings_to_clickhouse():
         )
         for booking in bookings
     )
+
+    print(
+    f"Loaded {len(bookings)} bookings "
+    f"(run_id={run_id}, loaded_at={loaded_at}) "
+    f"to ClickHouse"
+)
 
     insert_query = """
     INSERT INTO travel.raw_bookings

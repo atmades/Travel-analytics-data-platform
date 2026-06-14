@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS travel.raw_bookings
     currency String,
     created_at DateTime64(3, 'UTC'),
     loaded_at DateTime64(3, 'UTC') DEFAULT now64(3)
+    run_id String
 )
 ENGINE = MergeTree
 ORDER BY (booking_id, loaded_at);
@@ -117,9 +118,28 @@ CREATE TABLE IF NOT EXISTS travel.stg_bookings
     currency String,
     created_at DateTime64(3, 'UTC'),
     loaded_at DateTime64(3, 'UTC')
+    run_id String
 )
 ENGINE = MergeTree
 ORDER BY (booking_id);
+
+
+CREATE TABLE IF NOT EXISTS travel.stg_bookings_latest
+(
+    booking_id UInt64,
+    user_id UInt64,
+    route String,
+    transport_type String,
+    status String,
+    price Float64,
+    currency String,
+    created_at DateTime,
+    loaded_at DateTime64(3, 'UTC'),
+    run_id String
+)
+ENGINE = ReplacingMergeTree(loaded_at)
+ORDER BY booking_id;
+
 
 CREATE TABLE IF NOT EXISTS travel.stg_ads
 (
@@ -133,6 +153,21 @@ CREATE TABLE IF NOT EXISTS travel.stg_ads
 )
 ENGINE = MergeTree
 ORDER BY (platform, campaign_id);
+
+
+CREATE TABLE IF NOT EXISTS travel.stg_ads_latest
+(
+    platform String,
+    campaign_id String,
+    campaign_name String,
+    clicks UInt64,
+    impressions UInt64,
+    spend Float64,
+    loaded_at DateTime64(3, 'UTC')
+)
+ENGINE = ReplacingMergeTree(loaded_at)
+ORDER BY (platform, campaign_id);
+
 
 CREATE TABLE IF NOT EXISTS travel.stg_orders
 (

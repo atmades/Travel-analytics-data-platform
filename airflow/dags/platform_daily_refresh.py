@@ -3,6 +3,44 @@ from datetime import datetime
 from airflow import DAG
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 
+doc_md="""
+# Travel Analytics Platform Refresh
+
+Master orchestration DAG for the Travel Analytics Data Platform.
+
+## Purpose
+
+Coordinates platform pipelines and enforces layer dependencies:
+
+Raw → Data Quality → Staging → Data Quality → Marts
+
+## Domains
+
+### Bookings
+Booking API → Raw → DQ → Staging → DQ → Marts
+
+### Advertising
+Ads APIs → Raw → Staging → Marts
+
+### User Events
+User Events → Staging → Funnel & Conversion Marts
+
+### Orders CDC
+PostgreSQL CDC → Staging → DQ → Orders Marts
+
+### Cross-Domain Analytics
+Ads + Orders → Campaign Performance Mart
+
+DQ Results → DQ Monitoring Mart
+
+## Execution Strategy
+
+- Domain-oriented orchestration
+- Data Quality before marts
+- Fail-fast execution
+- wait_for_completion enabled for dependency enforcement
+"""
+
 
 def trigger(dag_id: str, task_id: str) -> TriggerDagRunOperator:
     return TriggerDagRunOperator(

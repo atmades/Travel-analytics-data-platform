@@ -1,3 +1,20 @@
+"""
+Purpose:
+Build the latest booking state from the append-only raw layer.
+
+Input:
+travel.raw_bookings
+
+Output:
+travel.stg_bookings_latest
+
+Business Rules:
+- booking_id must not be 0
+- price must be non-negative
+- latest version is determined by loaded_at
+"""
+
+
 from datetime import datetime
 
 from airflow import DAG
@@ -41,10 +58,8 @@ def load_invalid_records_to_dlq():
 
 
 def load_valid_records_to_staging():
-    run_clickhouse_query("TRUNCATE TABLE travel.stg_bookings")
-
     query = """
-    INSERT INTO travel.stg_bookings
+    INSERT INTO travel.stg_bookings_latest
     (
         booking_id,
         user_id,
@@ -54,7 +69,8 @@ def load_valid_records_to_staging():
         price,
         currency,
         created_at,
-        loaded_at
+        loaded_at,
+        run_id
     )
     SELECT
         booking_id,
@@ -65,28 +81,19 @@ def load_valid_records_to_staging():
         price,
         currency,
         created_at,
-        latest_loaded_at AS loaded_at
-    FROM
-    (
-        SELECT
-            booking_id,
-            argMax(user_id, loaded_at) AS user_id,
-            argMax(route, loaded_at) AS route,
-            argMax(transport_type, loaded_at) AS transport_type,
-            argMax(status, loaded_at) AS status,
-            argMax(price, loaded_at) AS price,
-            argMax(currency, loaded_at) AS currency,
-            argMax(created_at, loaded_at) AS created_at,
-            max(loaded_at) AS latest_loaded_at
-        FROM travel.raw_bookings
-        GROUP BY booking_id
-    )
+        loaded_at,
+        run_id
+    FROM travel.raw_bookings
     WHERE booking_id != 0
       AND price >= 0
+      AND loaded_at > (
+          SELECT ifNull(max(loaded_at), toDateTime64('1970-01-01 00:00:00', 3, 'UTC'))
+          FROM travel.stg_bookings_latest
+      )
     """
 
     run_clickhouse_query(query)
-    print("Latest valid records loaded to stg_bookings")
+    print("New valid records loaded to stg_bookings_latest")
 
 
 with DAG(

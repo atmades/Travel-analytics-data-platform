@@ -3,7 +3,7 @@ from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_mart_ad_performance():
@@ -30,7 +30,7 @@ def build_mart_ad_performance():
         spend,
         if(impressions = 0, 0, clicks / impressions) AS ctr,
         if(clicks = 0, 0, spend / clicks) AS cpc
-    FROM travel.stg_ads
+    FROM travel.stg_ads_latest FINAL
     """
 
     run_clickhouse_query(query)

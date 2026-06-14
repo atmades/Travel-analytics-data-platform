@@ -3,7 +3,7 @@ from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_stg_orders():

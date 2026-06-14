@@ -4,6 +4,14 @@ A portfolio Data Engineering project that demonstrates the design and implementa
 
 The platform ingests data from multiple sources, including booking APIs, advertising platforms, user events, and database change data capture (CDC). Data is processed through layered storage (Raw → Staging → Marts), validated with Data Quality checks, and exposed through analytical data marts.
 
+Bookings ───────┐
+Ads ────────────┼──► Marts
+Events ─────────┤
+Orders CDC ─────┘
+        │
+        ▼
+DQ Monitoring Mart
+
 ## Key Engineering Concepts Demonstrated
 
 * Event-Driven Architecture

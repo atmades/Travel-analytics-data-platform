@@ -3,7 +3,7 @@ from datetime import datetime
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_mart_campaign_performance():
@@ -36,9 +36,13 @@ def build_mart_campaign_performance():
            ads.spend / countIf(orders.status IN ('paid', 'completed'))) AS cpa,
         if(ads.spend = 0, 0,
            sumIf(orders.price, orders.status IN ('paid', 'completed')) / ads.spend) AS roas
-    FROM travel.stg_ads AS ads
+    FROM
+    (
+        SELECT *
+        FROM travel.stg_ads_latest FINAL
+    ) AS ads
     LEFT JOIN travel.stg_orders AS orders
-        ON ads.campaign_id = orders.campaign_id
+        ON ads.campaign_id = toString(orders.campaign_id)
     GROUP BY
         ads.platform,
         ads.campaign_id,

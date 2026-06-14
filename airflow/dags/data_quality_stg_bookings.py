@@ -1,15 +1,51 @@
+
+"""
+Data Quality checks for the Bookings staging layer.
+
+Purpose:
+- Validate that booking records were successfully promoted from Raw to Staging.
+- Ensure the latest booking state is available for downstream analytics.
+- Verify that deduplication logic is working correctly.
+- Detect stale staging data before marts are refreshed.
+
+Input:
+- travel.stg_bookings_latest
+
+Checks:
+1. Completeness
+   Ensures staging contains booking records.
+
+2. Uniqueness
+   Ensures there is only one current version per booking_id.
+
+3. Freshness
+   Ensures the latest booking state was updated within the expected SLA window.
+
+Business Rules:
+- The raw layer is append-only.
+- Duplicate booking_id values may exist in raw_bookings.
+- Staging must expose a single latest version of each booking.
+- ReplacingMergeTree deduplication is validated through FINAL queries.
+
+Notes:
+- All checks use FINAL because stg_bookings_latest is implemented with ReplacingMergeTree.
+- This DAG validates the analytical staging layer, not the ingestion layer.
+- Downstream marts should only consume validated staging data.
+"""
+
+
 from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def check_completeness():
     result = run_clickhouse_query("""
         SELECT count()
-        FROM travel.stg_bookings
+        FROM travel.stg_bookings_latest FINAL
     """)
 
     count = int(result)
@@ -26,7 +62,7 @@ def check_uniqueness():
         FROM
         (
             SELECT booking_id
-            FROM travel.stg_bookings
+            FROM travel.stg_bookings_latest FINAL
             GROUP BY booking_id
             HAVING count() > 1
         )
@@ -43,7 +79,7 @@ def check_uniqueness():
 def check_freshness():
     result = run_clickhouse_query("""
         SELECT dateDiff('minute', max(loaded_at), now())
-        FROM travel.stg_bookings
+        FROM travel.stg_bookings_latest FINAL
     """)
 
     minutes_since_last_load = int(result)

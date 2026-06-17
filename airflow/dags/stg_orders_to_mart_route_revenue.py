@@ -1,9 +1,32 @@
+"""
+Build Route Revenue mart.
+
+Purpose:
+- Calculate revenue metrics by travel route.
+- Provide route-level sales performance KPIs.
+
+Business Questions:
+- Which routes generate the most revenue?
+- How many orders were placed for each route?
+- What is the average order value by route?
+
+Input:
+- travel.stg_orders
+
+Output:
+- travel.mart_route_revenue_from_orders
+
+Business Rules:
+- Only paid and completed orders contribute to revenue.
+- Metrics are aggregated by route.
+"""
+
 from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_mart_route_revenue():

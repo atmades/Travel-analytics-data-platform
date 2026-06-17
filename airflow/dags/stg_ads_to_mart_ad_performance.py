@@ -1,3 +1,38 @@
+"""
+Build Advertising Performance mart.
+
+Purpose:
+- Calculate campaign-level advertising performance metrics.
+- Provide marketing KPIs for campaign monitoring and optimization.
+- Support reporting across advertising platforms.
+
+Business Questions:
+- Which campaigns generate the most traffic?
+- Which campaigns have the highest CTR?
+- How much does each click cost?
+- Which platforms deliver the best advertising performance?
+
+Input:
+- travel.stg_ads_latest
+
+Output:
+- travel.mart_ad_performance
+
+Metrics:
+- clicks
+- impressions
+- spend
+- ctr (Click-Through Rate)
+- cpc (Cost Per Click)
+
+Business Rules:
+- Only the latest campaign version is used.
+- ReplacingMergeTree deduplication is applied through FINAL.
+- CTR = clicks / impressions.
+- CPC = spend / clicks.
+- Division-by-zero scenarios return 0.
+"""
+
 from datetime import datetime
 
 from airflow import DAG

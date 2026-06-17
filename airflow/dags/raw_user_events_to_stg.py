@@ -1,9 +1,36 @@
+"""
+Refactor stg_user_events to ReplacingMergeTree(event_id, ingested_at)
+
+Build User Events staging layer.
+
+Purpose:
+- Transform raw Kafka user events into a deduplicated staging table.
+- Keep the latest version of each event_id based on ingested_at.
+- Prepare user behavior data for funnel and conversion marts.
+
+Input:
+- travel.raw_user_events
+
+Output:
+- travel.stg_user_events
+
+Business Rules:
+- event_id is the deduplication key.
+- If the same event is ingested more than once, the latest ingested_at wins.
+- Staging exposes one clean record per event_id.
+
+Notes:
+- Raw user events are produced through Kafka and stored in ClickHouse.
+- This DAG rebuilds the staging table from raw data.
+- Downstream marts should consume stg_user_events, not raw_user_events.
+"""
+
 from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_stg_user_events():

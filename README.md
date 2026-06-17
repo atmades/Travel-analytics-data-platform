@@ -544,4 +544,5 @@ Potential next steps for the platform:
 * Automated DLQ recovery workflows
 * Consumer lag monitoring
 * End-to-end integration tests
+* Refactor stg_user_events to ReplacingMergeTree(event_id, ingested_at)
 

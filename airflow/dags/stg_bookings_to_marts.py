@@ -1,9 +1,47 @@
+"""
+Build Booking Analytics marts.
+
+Purpose:
+- Create business-facing booking analytics marts.
+- Provide operational, revenue, and booking lifecycle KPIs.
+- Support reporting and dashboarding for the booking domain.
+
+Business Questions:
+
+Daily Bookings:
+- How many bookings are created each day?
+- How many bookings are paid or cancelled?
+- How much revenue is generated per day?
+
+Route Revenue:
+- Which routes generate the most revenue?
+- Which transport types perform best?
+- How many paid bookings exist by route?
+
+Booking Status:
+- What is the current distribution of booking statuses?
+- How many bookings are created, paid, or cancelled?
+
+Input:
+- travel.stg_bookings_latest
+
+Outputs:
+- travel.mart_daily_bookings
+- travel.mart_route_revenue
+- travel.mart_booking_status
+
+Business Rules:
+- Only the latest booking version is used.
+- ReplacingMergeTree deduplication is applied through FINAL.
+- Revenue is calculated from paid bookings only.
+"""
+
 from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_mart_daily_bookings():
@@ -52,7 +90,7 @@ def build_mart_route_revenue():
         count() AS total_bookings,
         countIf(status = 'paid') AS paid_bookings,
         sumIf(price, status = 'paid') AS total_revenue
-    FROM travel.stg_bookings
+    FROM travel.stg_bookings_latest FINAL
     GROUP BY
         route,
         transport_type
@@ -105,4 +143,6 @@ with DAG(
         python_callable=build_mart_booking_status,
     )
 
-    daily_bookings >> route_revenue >> booking_status
+    daily_bookings
+    route_revenue
+    booking_status

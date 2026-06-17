@@ -1,3 +1,43 @@
+"""
+Build Campaign Performance mart.
+
+Purpose:
+- Combine advertising performance with order revenue.
+- Measure campaign effectiveness beyond clicks and impressions.
+- Provide business KPIs for marketing ROI analysis.
+
+Business Questions:
+- Which campaigns generate bookings?
+- Which campaigns generate revenue?
+- What is the CPA for each campaign?
+- What is the ROAS for each campaign?
+
+Inputs:
+- travel.stg_ads_latest
+- travel.stg_orders
+
+Output:
+- travel.mart_campaign_performance
+
+Metrics:
+- spend
+- clicks
+- impressions
+- bookings
+- revenue
+- cpa (Cost Per Acquisition)
+- roas (Return On Ad Spend)
+
+Business Rules:
+- Only paid and completed orders count as bookings.
+- Revenue is calculated from paid and completed orders.
+- Ads data uses the latest campaign version through FINAL.
+- campaign_id from Ads is joined to Orders as a string.
+- Division-by-zero scenarios return 0.
+
+Marketing spend → Orders → Revenue → ROAS
+"""
+
 from datetime import datetime
 
 from airflow import DAG

@@ -1,9 +1,58 @@
+"""
+Build Booking Conversion mart.
+Conversion rates are calculated by unique users, not raw event counts.
+
+Purpose:
+- Calculate key conversion metrics across the booking funnel.
+- Measure user progression from search to booking and payment.
+- Provide product and business KPIs for conversion analysis.
+
+Input:
+- travel.stg_user_events
+
+Output:
+- travel.mart_booking_conversion
+
+Metrics:
+- searches
+    Unique users who performed a search.
+
+- bookings
+    Unique users who started a booking.
+
+- payments
+    Unique users who completed a payment.
+
+- search_to_booking_rate
+    bookings / searches
+
+- booking_to_payment_rate
+    payments / bookings
+
+Business Rules:
+- Conversion rates are calculated using unique users.
+- A user is counted once per funnel step.
+- Division-by-zero scenarios return 0.
+
+Funnel:
+search_performed
+    ↓
+booking_started
+    ↓
+payment_completed
+
+Notes:
+- This mart provides high-level funnel conversion KPIs.
+- Event-level investigation should use travel.stg_user_events.
+- The mart is intended for BI dashboards and product analytics reporting.
+"""
+
 from datetime import datetime
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 
-from common.clickhouse_client import run_clickhouse_query
+from shared.clients.clickhouse import run_clickhouse_query
 
 
 def build_mart_booking_conversion():
@@ -17,17 +66,17 @@ def build_mart_booking_conversion():
     )
     WITH
         searches AS (
-            SELECT count() AS cnt
+            SELECT uniqExact(user_id) AS cnt
             FROM travel.stg_user_events
             WHERE event_type = 'search_performed'
         ),
         bookings AS (
-            SELECT count() AS cnt
+            SELECT uniqExact(user_id) AS cnt
             FROM travel.stg_user_events
             WHERE event_type = 'booking_started'
         ),
         payments AS (
-            SELECT count() AS cnt
+            SELECT uniqExact(user_id) AS cnt
             FROM travel.stg_user_events
             WHERE event_type = 'payment_completed'
         )

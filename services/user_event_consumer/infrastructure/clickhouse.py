@@ -1,5 +1,6 @@
 import json
 import requests
+from uuid import UUID
 
 from config import (
     CLICKHOUSE_PASSWORD,
@@ -40,14 +41,17 @@ def insert_event_to_clickhouse(event: dict) -> None:
     except requests.RequestException as error:
         raise InfrastructureError(response.text) from error
     
+def validate_uuid(value: str) -> str:
+    return str(UUID(value))
 
 def mark_dlq_event_as_recovered(event_id: str) -> None:
+    safe_event_id = validate_uuid(event_id)
     query = f"""
     ALTER TABLE travel.dlq_user_events
     UPDATE
         recovered = 1,
         recovered_at = now64(3)
-    WHERE event_id = '{event_id}'
+    WHERE event_id = '{safe_event_id }'
     """
 
     response = requests.post(

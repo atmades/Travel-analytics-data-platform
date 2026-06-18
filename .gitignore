@@ -2,9 +2,11 @@ __pycache__/
 *.pyc
 .env
 .DS_Store
+.pytest_cache/
 
 airflow/logs/
 airflow/plugins/
 airflow/config/
 
 clickhouse_data/
+

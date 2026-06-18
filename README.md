@@ -526,6 +526,14 @@ DLQ replay:
 docker compose up dlq_replayer
 ```
 
+### Development Setup
+
+```bash
+pip install -r requirements-dev.txt
+```
+
+Service dependencies are pinned to ensure reproducible builds.
+
 ## Future Improvements
 
 Potential next steps for the platform:

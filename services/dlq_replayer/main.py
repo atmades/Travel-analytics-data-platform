@@ -1,5 +1,6 @@
 import json
 import os
+from uuid import UUID
 
 import requests
 from confluent_kafka import SerializingProducer
@@ -18,6 +19,8 @@ CLICKHOUSE_PASSWORD = os.getenv("CLICKHOUSE_PASSWORD", "travel_password")
 
 BATCH_SIZE = int(os.getenv("DLQ_REPLAY_BATCH_SIZE", "20"))
 
+def validate_uuid(value: str) -> str:
+    return str(UUID(value))
 
 def run_clickhouse_query(query: str) -> str:
     response = requests.post(
@@ -73,7 +76,8 @@ def mark_as_replayed(event_ids: list[str]) -> None:
     if not event_ids:
         return
 
-    ids = ", ".join(f"'{event_id}'" for event_id in event_ids)
+    safe_event_ids = [validate_uuid(event_id) for event_id in event_ids]
+    ids = ", ".join(f"'{event_id}'" for event_id in safe_event_ids)
 
     query = f"""
     ALTER TABLE travel.dlq_user_events

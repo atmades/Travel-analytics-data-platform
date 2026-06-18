@@ -146,9 +146,6 @@ def check_stg_orders_valid_status():
         'paid',
         'completed',
         'cancelled',
-        'env_config_test',
-        'grafana_test',
-        'kafka_ui_test'
     )
     """
 

@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS travel.raw_bookings
     price Float64,
     currency String,
     created_at DateTime64(3, 'UTC'),
-    loaded_at DateTime64(3, 'UTC') DEFAULT now64(3)
+    loaded_at DateTime64(3, 'UTC') DEFAULT now64(3),
     run_id String
 )
 ENGINE = MergeTree
@@ -41,7 +41,11 @@ CREATE TABLE IF NOT EXISTS travel.raw_cdc_orders
     ingested_at DateTime64(3, 'UTC') DEFAULT now64(3)
 )
 ENGINE = MergeTree
-ORDER BY (order_id, source_ts_ms, ingested_at);
+ORDER BY (
+    ifNull(order_id, 0),
+    ifNull(source_ts_ms, 0),
+    ingested_at
+);
 
 CREATE TABLE IF NOT EXISTS travel.raw_ads_api_payloads
 (
@@ -117,7 +121,7 @@ CREATE TABLE IF NOT EXISTS travel.stg_bookings
     price Float64,
     currency String,
     created_at DateTime64(3, 'UTC'),
-    loaded_at DateTime64(3, 'UTC')
+    loaded_at DateTime64(3, 'UTC'),
     run_id String
 )
 ENGINE = MergeTree
@@ -246,7 +250,7 @@ ORDER BY (status);
 CREATE TABLE IF NOT EXISTS travel.mart_ad_performance
 (
     platform String,
-    campaign_id UInt64,
+    campaign_id String,
     campaign_name String,
     clicks UInt64,
     impressions UInt64,
@@ -260,7 +264,7 @@ ORDER BY (platform, campaign_id);
 CREATE TABLE IF NOT EXISTS travel.mart_campaign_performance
 (
     platform String,
-    campaign_id UInt64,
+    campaign_id String,
     campaign_name String,
     spend Float64,
     clicks UInt64,

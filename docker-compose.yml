@@ -231,9 +231,12 @@ services:
     env_file:
       - .env
     depends_on:
-      - kafka
-      - schema_registry
-      - clickhouse
+      kafka:
+        condition: service_started
+      schema_registry:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
     restart: "no"
     
   prometheus:

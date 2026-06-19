@@ -252,6 +252,9 @@ services:
     container_name: travel_grafana
     ports:
       - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
 
 volumes:
   clickhouse_data:

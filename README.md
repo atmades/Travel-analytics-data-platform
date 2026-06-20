@@ -435,17 +435,35 @@ Failed checks stop downstream processing and surface issues early in the pipelin
 
 ## Observability
 
-The platform includes Prometheus and Grafana for runtime monitoring.
 
-Prometheus scrapes:
+The platform includes Prometheus and Grafana for monitoring data ingestion, event processing, CDC pipelines, and platform health.
+
+Kafka consumer lag is monitored through `kafka_exporter`.
+
+### Prometheus scrape targets
+
+- `prometheus`
 - `user_event_consumer`
 - `orders_cdc_consumer`
+- `kafka_exporter`
+
+### Grafana provisioning
 
 Grafana is provisioned automatically with:
+
 - Prometheus datasource
 - Travel Data Platform Overview dashboard
 
-Key metrics:
+### Dashboard metrics
+
+The dashboard provides visibility into:
+
+- User events received, processed, failed, and sent to DLQ
+- CDC events received, processed, and failed
+- Kafka consumer lag by consumer group
+
+### Key metrics
+
 - `events_received_total`
 - `events_processed_total`
 - `events_failed_total`
@@ -453,12 +471,33 @@ Key metrics:
 - `cdc_events_received_total`
 - `cdc_events_processed_total`
 - `cdc_events_failed_total`
+- `kafka_consumergroup_lag`
 
-Example dashboard queries:
+### Example PromQL queries
 
 ```promql
 increase(events_processed_total[5m])
 ```
+
+```promql
+sum(kafka_consumergroup_lag) by (consumergroup)
+```
+
+### Verification
+
+Prometheus targets:
+
+```text
+http://localhost:9090/targets
+```
+
+Expected targets:
+
+- prometheus
+- user_event_consumer
+- orders_cdc_consumer
+- kafka_exporter
+
 
 ### Tracked Metrics
 
@@ -468,6 +507,24 @@ increase(events_processed_total[5m])
 * Events sent to DLQ
 
 These metrics provide visibility into pipeline health and processing behavior.
+
+### Alerting
+
+Grafana alert rules are provisioned automatically.
+
+Current alert rules:
+
+- `User Events Failed Last 5m`
+  - triggers when `increase(events_failed_total[5m]) > 0`
+
+- `Kafka Consumer Lag High`
+  - triggers when `sum(kafka_consumergroup_lag) by (consumergroup) > 100`
+
+Alert rules are defined in:
+
+```text
+monitoring/grafana/provisioning/alerting/alerts.yml
+```
 
 ## Project Structure
 

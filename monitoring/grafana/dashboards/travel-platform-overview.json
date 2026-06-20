@@ -136,6 +136,27 @@
         "x": 12,
         "y": 16
       }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Kafka Consumer Lag by Group",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "expr": "sum(kafka_consumergroup_lag) by (consumergroup)",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 24
+      }
     }
   ]
 }

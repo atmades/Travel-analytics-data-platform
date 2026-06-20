@@ -103,6 +103,17 @@ services:
       KAFKA_CLUSTERS_0_NAME: travel-local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
       KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema_registry:8081
+  
+  kafka_exporter:
+    image: danielqsj/kafka-exporter:latest
+    container_name: travel_kafka_exporter
+    depends_on:
+      kafka:
+        condition: service_started
+    ports:
+      - "9308:9308"
+    command:
+      - "--kafka.server=kafka:9092"
 
   user_event_producer:
     build:

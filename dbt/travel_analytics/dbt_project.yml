@@ -1,0 +1,17 @@
+name: travel_analytics
+version: "1.0.0"
+config-version: 2
+
+profile: travel_analytics
+
+model-paths: ["models"]
+test-paths: ["tests"]
+
+models:
+  travel_analytics:
+    staging:
+      +materialized: view
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table

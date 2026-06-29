@@ -10,3 +10,7 @@ airflow/config/
 
 clickhouse_data/
 
+dbt/travel_analytics/target/
+dbt/travel_analytics/dbt_packages/
+dbt/travel_analytics/logs/
+

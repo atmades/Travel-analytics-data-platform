@@ -4,6 +4,9 @@ A portfolio Data Engineering project that demonstrates the design and implementa
 
 The platform ingests data from multiple sources, including booking APIs, advertising platforms, user events, and database change data capture (CDC). Data is processed through layered storage (Raw → Staging → Marts), validated with Data Quality checks, and exposed through analytical data marts.
 
+Local Airflow uses SequentialExecutor; master DAG triggers domain DAGs asynchronously.
+In production, this can be switched to wait_for_completion=True with Local/Celery/KubernetesExecutor.
+
 ```text
 Bookings   → Marts
 Ads        → Marts

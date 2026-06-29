@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: stg_bookings_latest
+    columns:
+      - name: booking_id
+        data_tests:
+          - not_null
+          - unique
+
+      - name: status
+        data_tests:
+          - not_null

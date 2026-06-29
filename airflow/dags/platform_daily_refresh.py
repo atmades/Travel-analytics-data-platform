@@ -1,9 +1,4 @@
-from datetime import datetime
-
-from airflow import DAG
-from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-
-doc_md="""
+"""
 # Travel Analytics Platform Refresh
 
 Master orchestration DAG for the Travel Analytics Data Platform.
@@ -42,13 +37,21 @@ DQ Results → DQ Monitoring Mart
 """
 
 
+from datetime import datetime, timedelta
+
+from airflow import DAG
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
+
+
+
+
 def trigger(dag_id: str, task_id: str) -> TriggerDagRunOperator:
     return TriggerDagRunOperator(
         task_id=task_id,
         trigger_dag_id=dag_id,
-        wait_for_completion=True,
-        poke_interval=30,
+        wait_for_completion=False,
         reset_dag_run=True,
+        execution_timeout=timedelta(minutes=10),
     )
 
 
@@ -67,6 +70,7 @@ with DAG(
 ) as dag:
     booking_ingest = trigger("booking_api_to_clickhouse", "booking_ingest")
     dq_raw_bookings = trigger("data_quality_raw_bookings", "dq_raw_bookings")
+    dbt_transformations = trigger("dbt_travel_analytics", "dbt_transformations")
     raw_to_stg_bookings = trigger("raw_to_stg_bookings", "raw_to_stg_bookings")
     dq_stg_bookings = trigger("data_quality_stg_bookings", "dq_stg_bookings")
     stg_bookings_marts = trigger("stg_bookings_to_marts", "stg_bookings_marts")
@@ -106,12 +110,20 @@ with DAG(
     mart_dq_latest = trigger("dq_results_to_mart", "mart_dq_latest")
 
     (
+        # booking_ingest
+        # >> dq_raw_bookings
+        # >> dbt_transformations
+        # >> raw_to_stg_bookings
+        # >> dq_stg_bookings
+        # >> stg_bookings_marts
+
         booking_ingest
         >> dq_raw_bookings
         >> raw_to_stg_bookings
         >> dq_stg_bookings
         >> stg_bookings_marts
     )
+    booking_ingest >> dbt_transformations
 
     ads_ingest >> raw_to_stg_ads >> mart_ad_performance
 
@@ -123,6 +135,7 @@ with DAG(
 
     [
         stg_bookings_marts,
+        dbt_transformations,
         mart_ad_performance,
         mart_event_funnel,
         mart_booking_conversion,

@@ -1,0 +1,20 @@
+travel_analytics:
+  target: docker
+  outputs:
+    local:
+      type: clickhouse
+      schema: travel
+      host: localhost
+      port: 8123
+      user: travel_user
+      password: travel_password
+      secure: false
+
+    docker:
+      type: clickhouse
+      schema: travel
+      host: clickhouse
+      port: 8123
+      user: travel_user
+      password: travel_password
+      secure: false

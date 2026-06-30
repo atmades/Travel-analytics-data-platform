@@ -5,44 +5,32 @@ Master orchestration DAG for the Travel Analytics Data Platform.
 
 ## Purpose
 
-Coordinates platform pipelines and enforces layer dependencies:
+Coordinates platform refresh across ingestion, data quality, dbt transformations,
+and monitoring marts.
 
-Raw → Data Quality → Staging → Data Quality → Marts
+## Current Architecture
 
-## Domains
+Airflow is responsible for orchestration and ingestion.
 
-### Bookings
-Booking API → Raw → DQ → Staging → DQ → Marts
-
-### Advertising
-Ads APIs → Raw → Staging → Marts
-
-### User Events
-User Events → Staging → Funnel & Conversion Marts
-
-### Orders CDC
-PostgreSQL CDC → Staging → DQ → Orders Marts
-
-### Cross-Domain Analytics
-Ads + Orders → Campaign Performance Mart
-
-DQ Results → DQ Monitoring Mart
+dbt is responsible for:
+- staging models
+- mart models
+- SQL transformations
+- model-level data tests
 
 ## Execution Strategy
 
-- Domain-oriented orchestration
-- Data Quality before marts
-- Fail-fast execution
-- wait_for_completion enabled for dependency enforcement
+- Trigger raw ingestion DAGs first
+- Run raw/business data quality checks where needed
+- Run dbt analytics transformations
+- Refresh the latest DQ monitoring mart
+- Child DAGs are triggered asynchronously for local SequentialExecutor compatibility
 """
-
 
 from datetime import datetime, timedelta
 
 from airflow import DAG
 from airflow.operators.trigger_dagrun import TriggerDagRunOperator
-
-
 
 
 def trigger(dag_id: str, task_id: str) -> TriggerDagRunOperator:
@@ -62,84 +50,28 @@ with DAG(
     catchup=False,
     tags=["travel", "orchestration"],
     doc_md="""
-    Master orchestration DAG that chains domain pipelines in dependency order.
+    Master orchestration DAG for the Travel Analytics Data Platform.
 
-    Run this after `make init` to refresh bookings, ads, user events, CDC orders,
-    and data quality marts in one workflow.
+    This DAG triggers ingestion, data quality, dbt transformations, and
+    monitoring mart refreshes in a single workflow.
+
+    In the local Docker setup, child DAGs are triggered asynchronously because
+    Airflow runs with SequentialExecutor.
     """,
 ) as dag:
     booking_ingest = trigger("booking_api_to_clickhouse", "booking_ingest")
-    dq_raw_bookings = trigger("data_quality_raw_bookings", "dq_raw_bookings")
-    dbt_transformations = trigger("dbt_travel_analytics", "dbt_transformations")
-    raw_to_stg_bookings = trigger("raw_to_stg_bookings", "raw_to_stg_bookings")
-    dq_stg_bookings = trigger("data_quality_stg_bookings", "dq_stg_bookings")
-    stg_bookings_marts = trigger("stg_bookings_to_marts", "stg_bookings_marts")
-
     ads_ingest = trigger("ads_api_to_clickhouse", "ads_ingest")
-    raw_to_stg_ads = trigger("raw_ads_to_stg_ads", "raw_to_stg_ads")
-    mart_ad_performance = trigger(
-        "stg_ads_to_mart_ad_performance",
-        "mart_ad_performance",
-    )
 
-    raw_to_stg_events = trigger("raw_user_events_to_stg", "raw_to_stg_events")
-    mart_event_funnel = trigger(
-        "stg_user_events_to_mart_funnel",
-        "mart_event_funnel",
-    )
-    mart_booking_conversion = trigger(
-        "stg_user_events_to_mart_booking_conversion",
-        "mart_booking_conversion",
-    )
-
-    raw_to_stg_cdc = trigger("raw_cdc_orders_to_stg", "raw_to_stg_cdc")
+    dq_raw_bookings = trigger("data_quality_raw_bookings", "dq_raw_bookings")
     dq_orders = trigger("data_quality_orders", "dq_orders")
-    mart_orders_status = trigger(
-        "stg_orders_to_mart_orders_status",
-        "mart_orders_status",
-    )
-    mart_route_revenue_orders = trigger(
-        "stg_orders_to_mart_route_revenue",
-        "mart_route_revenue_orders",
-    )
-    mart_campaign_performance = trigger(
-        "stg_ads_orders_to_mart_campaign_performance",
-        "mart_campaign_performance",
-    )
+
+    dbt_transformations = trigger("dbt_travel_analytics", "dbt_transformations")
 
     mart_dq_latest = trigger("dq_results_to_mart", "mart_dq_latest")
 
-    (
-        # booking_ingest
-        # >> dq_raw_bookings
-        # >> dbt_transformations
-        # >> raw_to_stg_bookings
-        # >> dq_stg_bookings
-        # >> stg_bookings_marts
+    [booking_ingest, ads_ingest] >> dbt_transformations
 
-        booking_ingest
-        >> dq_raw_bookings
-        >> raw_to_stg_bookings
-        >> dq_stg_bookings
-        >> stg_bookings_marts
-    )
-    booking_ingest >> dbt_transformations
+    booking_ingest >> dq_raw_bookings
+    dbt_transformations >> dq_orders
 
-    ads_ingest >> raw_to_stg_ads >> mart_ad_performance
-
-    raw_to_stg_events >> [mart_event_funnel, mart_booking_conversion]
-
-    raw_to_stg_cdc >> dq_orders >> [mart_orders_status, mart_route_revenue_orders]
-
-    [raw_to_stg_ads, raw_to_stg_cdc] >> mart_campaign_performance
-
-    [
-        stg_bookings_marts,
-        dbt_transformations,
-        mart_ad_performance,
-        mart_event_funnel,
-        mart_booking_conversion,
-        mart_orders_status,
-        mart_route_revenue_orders,
-        mart_campaign_performance,
-    ] >> mart_dq_latest
+    [dq_raw_bookings, dq_orders, dbt_transformations] >> mart_dq_latest

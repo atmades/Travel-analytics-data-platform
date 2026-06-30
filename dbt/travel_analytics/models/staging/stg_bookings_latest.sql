@@ -21,6 +21,6 @@ FROM
             PARTITION BY booking_id
             ORDER BY loaded_at DESC
         ) AS rn
-    FROM travel.raw_bookings
+    FROM {{ source('raw', 'raw_bookings') }}
 )
 WHERE rn = 1

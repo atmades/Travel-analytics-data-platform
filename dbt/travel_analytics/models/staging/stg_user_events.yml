@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: stg_user_events
+    columns:
+      - name: event_id
+        data_tests:
+          - not_null
+          - unique
+
+      - name: user_id
+        data_tests:
+          - not_null
+
+      - name: event_type
+        data_tests:
+          - not_null

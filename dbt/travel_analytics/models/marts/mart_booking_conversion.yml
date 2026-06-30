@@ -1,0 +1,13 @@
+version: 2
+
+models:
+  - name: mart_booking_conversion
+    columns:
+      - name: metric
+        data_tests:
+          - not_null
+          - unique
+
+      - name: value
+        data_tests:
+          - not_null

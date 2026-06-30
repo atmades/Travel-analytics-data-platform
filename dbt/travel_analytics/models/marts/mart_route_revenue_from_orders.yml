@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: mart_route_revenue_from_orders
+    columns:
+      - name: route
+        data_tests:
+          - not_null
+
+      - name: orders_count
+        data_tests:
+          - not_null
+
+      - name: total_revenue
+        data_tests:
+          - not_null

@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: stg_ads_latest
+    columns:
+      - name: platform
+        data_tests:
+          - not_null
+
+      - name: campaign_id
+        data_tests:
+          - not_null
+
+      - name: campaign_name
+        data_tests:
+          - not_null

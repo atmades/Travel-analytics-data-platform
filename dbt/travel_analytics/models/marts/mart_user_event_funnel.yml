@@ -1,0 +1,16 @@
+version: 2
+
+models:
+  - name: mart_user_event_funnel
+    columns:
+      - name: event_type
+        data_tests:
+          - not_null
+
+      - name: users_count
+        data_tests:
+          - not_null
+
+      - name: events_count
+        data_tests:
+          - not_null

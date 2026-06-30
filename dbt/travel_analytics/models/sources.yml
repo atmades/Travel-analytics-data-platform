@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: raw
+    database: travel
+    schema: travel
+    tables:
+      - name: raw_bookings
+      - name: raw_google_ads
+      - name: raw_meta_ads
+      - name: raw_user_events
+      - name: raw_cdc_orders

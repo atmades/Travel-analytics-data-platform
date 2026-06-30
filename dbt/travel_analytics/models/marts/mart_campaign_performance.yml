@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: mart_campaign_performance
+    columns:
+      - name: platform
+        data_tests:
+          - not_null
+
+      - name: campaign_id
+        data_tests:
+          - not_null
+
+      - name: spend
+        data_tests:
+          - not_null
+
+      - name: revenue
+        data_tests:
+          - not_null

@@ -19,19 +19,37 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install development dependencies
         run: |
-            python -m pip install --upgrade pip
-            python -m pip install -r requirements-dev.txt
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Install dbt dependencies
+        run: |
+          python -m pip install -r requirements-dbt.txt
 
       - name: Run Ruff
         run: |
-          python -m ruff check services/ airflow/dags/ shared/ tests/
+          python -m ruff check services airflow shared tests
 
       - name: Compile Python files
         run: |
-          python -m compileall services/ airflow/dags/ shared/
+          python -m compileall services airflow shared tests
 
       - name: Run unit tests
         run: |
-          python -m pytest tests/ -v
+          python -m pytest tests -v
+
+      - name: Validate Docker Compose
+        run: |
+          docker compose config
+
+      - name: dbt parse
+        working-directory: dbt/travel_analytics
+        run: |
+          dbt parse --profiles-dir . --target local
+
+      - name: dbt compile
+        working-directory: dbt/travel_analytics
+        run: |
+          dbt compile --profiles-dir . --target local

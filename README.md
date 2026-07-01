@@ -1,3 +1,12 @@
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![Airflow](https://img.shields.io/badge/Airflow-3.x-red)
+![dbt](https://img.shields.io/badge/dbt-1.10-orange)
+![ClickHouse](https://img.shields.io/badge/ClickHouse-24.x-yellow)
+![Kafka](https://img.shields.io/badge/Kafka-Event%20Streaming-black)
+![Docker](https://img.shields.io/badge/Docker-Compose-blue)
+![CI](https://github.com/atmades/Travel-analytics-data-platform/actions/workflows/ci.yml/badge.svg)
+![License](https://img.shields.io/badge/License-MIT-green)
+
 # Travel Analytics Data Platform
 
 Production-style Data Engineering portfolio project demonstrating a modern analytics platform built with Python, Airflow, dbt, ClickHouse, Kafka, and Debezium.

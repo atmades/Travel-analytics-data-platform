@@ -10,13 +10,13 @@ init:
 	chmod +x scripts/init_platform.sh
 	./scripts/init_platform.sh
 
-test:
-	python -m pytest tests/ -v
-
 lint:
-	python -m ruff check services/ airflow/dags/
+	python -m ruff check services/ airflow/dags/ shared/ tests/
 
 compile:
-	python -m compileall services/ airflow/dags/
+	python -m compileall services/ airflow/dags/ shared/
+
+test:
+	python -m pytest tests/ -v
 
 smoke: lint compile test

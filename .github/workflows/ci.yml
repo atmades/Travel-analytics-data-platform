@@ -52,8 +52,3 @@ jobs:
         working-directory: dbt/travel_analytics
         run: |
           dbt parse --profiles-dir . --target local
-
-      - name: dbt compile
-        working-directory: dbt/travel_analytics
-        run: |
-          dbt compile --profiles-dir . --target local
